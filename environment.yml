@@ -10,7 +10,6 @@ dependencies:
   - scipy>=1.8
   - matplotlib>=3.5
   - pyamg>=4.2
-  - mat73>=0.65
   - pip
   - pip:
       - mat73

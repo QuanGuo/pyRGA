@@ -5,6 +5,8 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 import pyamg
 import time, mat73
 from sympy import symbols, diff, integrate
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # element stiffness
 def elemstiff2d(nel,hx,hy):
@@ -170,7 +172,7 @@ def transient_groundwater_solver(K, well_node, Q, initial_head, dt, t_max):
     return head_over_time
 
 
-def test_solver_accuracy(mat_filename):
+def test_transient_solver_accuracy(mat_filename):
     """
     Test the solver accuracy by comparing the results with a reference solution.
     """
@@ -212,22 +214,23 @@ def test_solver_accuracy(mat_filename):
  
     for i in range(10):
         head_solved = head_over_time[i]
-        head = heads[:,:,i].flatten()
-        L1_err = np.abs(head_solved.flatten() - head.flatten()).sum()
-        L2_err = np.square(head_solved.flatten() - head.flatten()).sum()
-        Max_err = np.square(head_solved.flatten() - head.flatten()).max()
+        head_true = heads[:,:,i].flatten()
+        L1_err = np.abs(head_solved.flatten() - head_true.flatten()).sum()
+        L2_err = np.square(head_solved.flatten() - head_true.flatten()).sum()
+        Max_err = np.square(head_solved.flatten() - head_true.flatten()).max()
 
         print(i, L1_err)
         print(i, L2_err)
         print(i, Max_err)
-    head = head.reshape((numnody, numnodx))
+        
+    head_true = head_true.reshape((numnody, numnodx))
     head_solved = head_solved.reshape((numnody, numnodx))
     fig,ax = plt.subplots(figsize=(7,6))
-    hmin, hmax = np.min(head.flatten()), np.max(head.flatten())
-    im = ax.pcolormesh(head, cmap='viridis', vmin=hmin, vmax=hmax)
+    hmin, hmax = np.min(head_true.flatten()), np.max(head_true.flatten())
+    im = ax.pcolormesh(head_true, cmap='viridis', vmin=hmin, vmax=hmax)
     lvls = np.linspace(-10,-0.1,7)
     cmp_str = 'RdBu'
-    CT = ax.contour(head, levels=lvls,cmap=cmp_str)
+    CT = ax.contour(head_true, levels=lvls,cmap=cmp_str)
     ax.clabel(CT,fontsize=15,inline=True,inline_spacing=1,fmt='%.1f')
     cbar = fig.colorbar(im, ax=ax)
     ax.set_title('Matlab FEM')
@@ -253,7 +256,7 @@ if __name__ == "__main__":
     ])
     
     # mat_filename = 'GWSolver/benchmark_1024_transient.mat'
-    # test_solver_accuracy(mat_filename)
+    # test_transient_solver_accuracy(mat_filename)
     
     nx, ny = 1024, 1024  # Grid size
     numel = nx * ny
@@ -315,10 +318,10 @@ if __name__ == "__main__":
         img.set_data(head_over_time[frame].reshape((numnody, numnodx)))
         ax.set_title(f"Hydraulic Head at Time {frame * dt:.1f} hr")
 
-        # Remove old contours
-        if contour_lines:
-            for c in contour_lines.collections:
-                c.remove()
+        # # Remove old contours
+        # if contour_lines:
+        #     for c in contour_lines.collections:
+        #         c.remove()
 
         # Add new contours
         head = head_over_time[frame].reshape((numnody, numnodx))
@@ -329,5 +332,5 @@ if __name__ == "__main__":
     ani = FuncAnimation(fig, update, frames=len(head_over_time), interval=1000, blit=True)
 
     # Save animation as GIF
-    ani.save("./GWSolver/hydraulic_head_simulation.gif", writer=PillowWriter(fps=10))
+    ani.save("hydraulic_head_simulation.gif", writer=PillowWriter(fps=5))
     print("GIF saved as 'hydraulic_head_simulation.gif'")

@@ -6,6 +6,9 @@ import pyamg
 from scipy.sparse.linalg import cg
 from sympy import symbols, diff, integrate
 import mat73
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 
 # element stiffness
 def elemstiff2d(nel,hx,hy):
@@ -104,6 +107,56 @@ def assemble_matrix(numnodx, numnody, fe0, K, Q, dirichlet_nodes, dirichlet_valu
     return bigk_reduced, force_reduced
 
 
+def groundwater_solver(K, well_node, Q):
+    """
+    Solve the groundwater flow problem for a single well.
+
+    Args:
+        K (ndarray): Permeability field.
+        well_node (int): Index of the well location in the grid.
+        Q (float): Pumping rate at the well.
+
+    Returns:
+        ndarray: Hydraulic head solution for the domain.
+    """
+    numel = K.shape[0]
+    nx = ny = int(np.sqrt(numel))
+    numnodx = numnody = nx + 1
+    numnod = numnodx * numnody
+
+    stiffness = np.array([
+        [0.66666667, -0.16666667, -0.16666667, -0.33333333],
+        [-0.16666667, 0.66666667, -0.33333333, -0.16666667],
+        [-0.16666667, -0.33333333, 0.66666667, -0.16666667],
+        [-0.33333333, -0.16666667, -0.16666667, 0.66666667]
+    ])
+
+    left_boundary = np.arange(numnody) * numnodx
+    right_boundary = left_boundary + (numnodx - 1)
+    dirichlet_nodes = np.concatenate((left_boundary, right_boundary))
+
+    solution_full = np.zeros(numnod)
+    solution_full[left_boundary] = 0.0
+    solution_full[right_boundary] = 0.0
+    dirichlet_values = solution_full[dirichlet_nodes]
+
+    bigk = assemble_matrix(numnodx, numnody, stiffness, K)
+    
+    force = np.zeros(numnod)
+    force[well_node] = Q
+    force = apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values)
+
+    mask = np.ones(numnod, dtype=bool)
+    mask[dirichlet_nodes] = False
+
+    bigk_reduced = bigk[mask, :][:, mask]
+    force_reduced = force[mask]
+
+    ml = pyamg.ruge_stuben_solver(bigk_reduced)
+    solution_full[mask], _ = cg(bigk_reduced, force_reduced, M=ml.aspreconditioner())
+
+    return solution_full
+
 def calculate_flux(head_solved, K, numnodx, numnody, dx, dy):
     """
     Calculate flux components (q_x, q_y) from the hydraulic head and permeability field.
@@ -161,13 +214,13 @@ def plot_flux_map_streamlines(head_solved, qx, qy, dx, dy):
     X_mid, Y_mid = np.meshgrid(x, y)
 
     plt.figure(figsize=(10, 8))
-    plt.contourf(X, Y, head_solved, levels=20, cmap='viridis', alpha=0.7)
+    plt.contourf(X, Y, head_solved, levels=20, cmap='viridis', alpha=1)
     plt.colorbar(label="Hydraulic Head")
     plt.streamplot(X_mid, Y_mid, qy, qx, color='black', density=[0.5, 2], linewidth=1, broken_streamlines=True)
     plt.title("Streamlines with Hydraulic Head Contours")
     plt.xlabel("X")
     plt.ylabel("Y")
-    plt.show()
+    plt.savefig("flux_map_streamlines.png", dpi=300, transparent=True)
 
 def test_solver_accuracy(mat_filename):
     """
@@ -194,41 +247,8 @@ def test_solver_accuracy(mat_filename):
     # Flux density (in m³/s per m²)
     Q = q_original / dx /dy * 3600
 
-    # Identify Dirichlet boundary nodes
-    left_boundary = np.arange(numnody) * numnodx  # Left boundary nodes
-    right_boundary = left_boundary + (numnodx - 1)  # Right boundary nodes
-    # Incorporate Dirichlet boundary effects efficiently
-    dirichlet_nodes = np.concatenate((left_boundary, right_boundary))
-
-    # Set Dirichlet boundary values
-    solution_full = np.zeros(numnod)  # Full solution vector
-    solution_full[left_boundary] = 0.0  # Left boundary set to 1
-    solution_full[right_boundary] = 0.0  # Right boundary set to 0
-    dirichlet_values = solution_full[dirichlet_nodes]
-
-    # Start timer
     t0 = time.time()
-    
-    bigk_reduced, force_reduced = assemble_matrix(numnodx, numnody, stiffness, K, Q, dirichlet_nodes, dirichlet_values, pump_well_loc)
-
-    print("Elapsed time for preparing matrix:", time.time() - t0)
-    print("Reduced matrix shape:", bigk_reduced.shape)
-    print("Reduced force vector length:", len(force_reduced))
-
-    # Use AMG as a preconditioner for CG
-    ml = pyamg.ruge_stuben_solver(bigk_reduced)
-    solution_reduced, info = cg(bigk_reduced, force_reduced, M=ml.aspreconditioner())
-
-    # Check for convergence
-    if info == 0:
-        print("Solver converged successfully.")
-    else:
-        print(f"Solver did not converge. Info: {info}")
-
-    # Create a full solution vector and reimpose Dirichlet values
-    mask = np.ones(numnod, dtype=bool)
-    mask[dirichlet_nodes] = False
-    solution_full[mask] = solution_reduced
+    solution_full = groundwater_solver(K, pump_well_loc, Q)
     head_solved = solution_full.reshape((numnodx, numnody))
     
     print("Elapsed time for solving system:", time.time() - t0)
@@ -267,79 +287,79 @@ def test_solver_accuracy(mat_filename):
 # Example usage
 if __name__ == "__main__":
 
-    # test_solver_accuracy("./GWSolver/benchmark_1024.mat")
+    test_solver_accuracy("./data/benchmark_1024.mat")
     
-    # Define domain parameters
-    nx, ny = 64, 64 # domain resolution
-    numel = nx * ny
-    numnodx, numnody = nx + 1, ny + 1
-    numnod = numnodx * numnody
-    Lox, Loy = 320.0, 320.0 # domain real size, m
-    dx, dy = Lox / nx, Loy / ny
-    stiffness = elemstiff2d(4, dx, dy)
+    # # Define domain parameters
+    # nx, ny = 1024, 1024 # domain resolution
+    # numel = nx * ny
+    # numnodx, numnody = nx + 1, ny + 1
+    # numnod = numnodx * numnody
+    # Lox, Loy = 320.0, 320.0 # domain real size, m
+    # dx, dy = Lox / nx, Loy / ny
+    # stiffness = elemstiff2d(4, dx, dy)
     
-    K = np.exp(np.random.randn(numel) * 0.1 - 4)  # Generate K without extra dimension
-    K = K.reshape((nx, ny))
-    K[nx//5:nx//3, ny//4:ny//4*3] = np.exp(-5) 
-    K[nx//3*2:nx//5*4, ny//4:ny//4*3] = np.exp(-8) 
-    K = K.flatten()
+    # K = np.exp(np.random.randn(numel) * 0.1 - 4)  # Generate K without extra dimension
+    # K = K.reshape((nx, ny))
+    # K[nx//5:nx//3, ny//4:ny//4*3] = np.exp(-5) 
+    # K[nx//3*2:nx//5*4, ny//4:ny//4*3] = np.exp(-8) 
+    # K = K.flatten()
 
-    # Original pumping rate
-    q_original = -0.02  # m³/s
-    # Area associated with each node (element)
-    A = Lox/nx  * Loy/ny
-    # Flux density (in m³/s per m²)
-    Q = q_original / A * 3600
+    # # Original pumping rate
+    # q_original = -0.002  # m³/s
+    # # Area associated with each node (element)
+    # A = Lox/nx  * Loy/ny
+    # # Flux density (in m³/s per m²)
+    # Q = q_original / A * 3600
 
-    # Identify Dirichlet boundary nodes
-    left_boundary = np.arange(numnody) * numnodx  # Left boundary nodes
-    right_boundary = left_boundary + (numnodx - 1)  # Right boundary nodes
-    # Incorporate Dirichlet boundary effects efficiently
-    dirichlet_nodes = np.concatenate((left_boundary, right_boundary))
+    # # Identify Dirichlet boundary nodes
+    # left_boundary = np.arange(numnody) * numnodx  # Left boundary nodes
+    # right_boundary = left_boundary + (numnodx - 1)  # Right boundary nodes
+    # # Incorporate Dirichlet boundary effects efficiently
+    # dirichlet_nodes = np.concatenate((left_boundary, right_boundary))
 
-    # Set Dirichlet boundary values
-    solution_full = np.zeros(numnod)  # Full solution vector
-    solution_full[left_boundary] = 0.0  # Left boundary set to 1
-    solution_full[right_boundary] = 0.0  # Right boundary set to 0
-    dirichlet_values = solution_full[dirichlet_nodes]
+    # # Set Dirichlet boundary values
+    # solution_full = np.zeros(numnod)  # Full solution vector
+    # solution_full[left_boundary] = 0.0  # Left boundary set to 1
+    # solution_full[right_boundary] = 0.0  # Right boundary set to 0
+    # dirichlet_values = solution_full[dirichlet_nodes]
 
-    # Start timer
-    t0 = time.time()
+    # # Start timer
+    # t0 = time.time()
     
-    bigk_reduced, force_reduced = assemble_matrix(numnodx, numnody, stiffness, K, Q, dirichlet_nodes, dirichlet_values, numnod//2)
+    # bigk_reduced, force_reduced = assemble_matrix(numnodx, numnody, stiffness, K, Q, dirichlet_nodes, dirichlet_values, numnod//2)
 
-    print("Elapsed time for preparing matrix:", time.time() - t0)
-    print("Reduced matrix shape:", bigk_reduced.shape)
-    print("Reduced force vector length:", len(force_reduced))
+    # print("Elapsed time for preparing matrix:", time.time() - t0)
+    # print("Reduced matrix shape:", bigk_reduced.shape)
+    # print("Reduced force vector length:", len(force_reduced))
 
-    # Use AMG as a preconditioner for CG
-    ml = pyamg.ruge_stuben_solver(bigk_reduced)
-    solution_reduced, info = cg(bigk_reduced, force_reduced, M=ml.aspreconditioner())
+    # # Use AMG as a preconditioner for CG
+    # ml = pyamg.ruge_stuben_solver(bigk_reduced)
+    # solution_reduced, info = cg(bigk_reduced, force_reduced, M=ml.aspreconditioner())
 
-    # Check for convergence
-    if info == 0:
-        print("Solver converged successfully.")
-    else:
-        print(f"Solver did not converge. Info: {info}")
+    # # Check for convergence
+    # if info == 0:
+    #     print("Solver converged successfully.")
+    # else:
+    #     print(f"Solver did not converge. Info: {info}")
 
-    # Create a full solution vector and reimpose Dirichlet values
-    mask = np.ones(numnod, dtype=bool)
-    mask[dirichlet_nodes] = False
-    solution_full[mask] = solution_reduced
-    head_solved = solution_full.reshape((numnodx, numnody))
+    # # Create a full solution vector and reimpose Dirichlet values
+    # mask = np.ones(numnod, dtype=bool)
+    # mask[dirichlet_nodes] = False
+    # solution_full[mask] = solution_reduced
+    # head_solved = solution_full.reshape((numnodx, numnody))
 
-    print("Elapsed time for solving system:", time.time() - t0)
+    # print("Elapsed time for solving system:", time.time() - t0)
 
-    # Plot the solution
-    fig, ax = plt.subplots(figsize=(7, 6))
-    im = ax.pcolormesh(head_solved, cmap='viridis')
-    CT = ax.contour(head_solved, levels=10, colors='white')
-    ax.clabel(CT, fontsize=10, inline=True, fmt='%.1f')
-    cbar = fig.colorbar(im, ax=ax)
-    ax.set_title('Python FEM with AMG Preconditioning')
+    # # Plot the solution
+    # fig, ax = plt.subplots(figsize=(7, 6))
+    # im = ax.pcolormesh(head_solved, cmap='viridis')
+    # CT = ax.contour(head_solved, levels=10, colors='white')
+    # ax.clabel(CT, fontsize=10, inline=True, fmt='%.1f')
+    # cbar = fig.colorbar(im, ax=ax)
+    # ax.set_title('Python FEM with AMG Preconditioning')
 
-    # Assuming K is the permeability field with (numnodx-1) x (numnody-1) elements
-    qx, qy = calculate_flux(head_solved, K, numnodx, numnody, dx, dy)
-    plot_flux_map_streamlines(head_solved, qx, qy, dx, dy)
+    # # Assuming K is the permeability field with (numnodx-1) x (numnody-1) elements
+    # qx, qy = calculate_flux(head_solved, K, numnodx, numnody, dx, dy)
+    # plot_flux_map_streamlines(head_solved, qx, qy, dx, dy)
 
-    plt.show()
+    # plt.show()

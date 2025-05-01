@@ -17,7 +17,7 @@ from utils import plot_conductivity_fields, plot_parameters, plot_observations_v
 import matplotlib.pyplot as plt
 
 def generate_random_field(n_reals=1, Nx=256, Ny=256,
-                         cov_type='gaussian', variance=1.0,
+                         cov_type='gaussian', mu=0, variance=1.0,
                          lx=0.1, ly=0.2, nu=0.5):
     """
     Generate 2D Gaussian random fields with specified covariance structure using spectral method
@@ -65,7 +65,7 @@ def generate_random_field(n_reals=1, Nx=256, Ny=256,
     # Spectral domain transformation
     fft_noise = np.fft.fft2(white_noise, axes=(-2, -1))
     fft_field = fft_noise * np.sqrt(S)
-    field = np.fft.ifft2(fft_field, axes=(-2, -1)).real
+    field = np.fft.ifft2(fft_field, axes=(-2, -1)).real + mu
 
     return np.squeeze(field, axis=0) if n_reals == 1 else field
 
@@ -89,8 +89,10 @@ def forward_model(b, V, Q, well_nodes):
     Returns:
         ndarray: Vector of observed hydraulic head differences between well pairs
     """
-    s = np.squeeze(V @ b[:, np.newaxis],axis=1)
-    hydraulic_heads = hydraulic_tomography(np.exp(s), well_nodes, Q)
+    alpha = b[:-1]
+    mu = b[-1]
+    s = np.squeeze(V @ alpha[:, np.newaxis],axis=1)
+    hydraulic_heads = hydraulic_tomography(np.exp(s+mu), well_nodes, Q)
     yp = observation_operator(hydraulic_heads, well_nodes)
     return yp
 
@@ -123,7 +125,7 @@ def gauss_newton_dynamic_lambda(
 
         yp = f(b) / scale
         r = y_obs_norm - yp
-        L_old = 0.5 * np.dot(r, r) / lam + 0.5 * np.dot(b, b)
+        L_old = 0.5 * np.dot(r, r) / lam + 0.5 * np.dot(b[:-1], b[:-1])
 
         # Jacobian via finite difference
         eps = 1e-6
@@ -133,14 +135,15 @@ def gauss_newton_dynamic_lambda(
             b_eps[i] += eps
             J[:, i] = (f(b_eps) / scale - yp) / eps
 
+
         H = J.T @ J/lam + np.eye(len(b))
-        g = J.T @ r/lam
-        delta = np.linalg.solve(H, g-b)
-        b_new = delta + b
+        g = J.T @ (r+J@b)/lam
+        delta = np.linalg.solve(H, g)
+        b_new = delta
 
         yp_new = f(b_new) / scale
         r_new = y_obs_norm - yp_new
-        L_new = 0.5 * np.dot(r_new, r_new) / lam + 0.5 * np.dot(b_new, b_new)
+        L_new = 0.5 * np.dot(r_new, r_new) / lam + 0.5 * np.dot(b_new[:-1], b_new[:-1])
         step_norm = L_old/L_new - 1
 
         # Calculate elapsed time
@@ -164,7 +167,8 @@ def gauss_newton_dynamic_lambda(
                 lam = lam / 10
                 print("🔁 Step rejected — decreasing lambda.")
 
-        history["b"].append(b.copy())
+        history["alpha"].append(b[:-1].copy())
+        history["mu"].append(b[-1])
         history["loss"].append(float(L_new))
         history["lambda"].append(float(lam))
         history["step_norm"].append(float(step_norm))
@@ -172,12 +176,14 @@ def gauss_newton_dynamic_lambda(
         history["yp"].append(yp*scale)
         with open('history.json', 'w') as history_file:
             json_history = {    
-                "b": [arr.tolist() for arr in history["b"]],
+                "alpha": [arr.tolist() for arr in history["alpha"]],
+                "mu": history["mu"],
                 "loss": history["loss"],
                 "lambda": history["lambda"],
                 "step_norm": history["step_norm"],
                 "time": history["time"],
                 "true_alpha": history["true_alpha"].tolist(),
+                "true_mu": history["true_mu"],
                 "true_y": history["true_y"].tolist(),
                 "yp": [arr.tolist() for arr in history["yp"]]
             }
@@ -209,7 +215,8 @@ def load_history(filename='history.json'):
         history = json.load(f)
         
     # Convert b arrays back to numpy
-    history['b'] = [np.array(b) for b in history['b']]
+    history['alpha'] = [np.array(b) for b in history['alpha']]
+    history['mu'] = np.array(history['mu'])
     history['true_alpha'] = np.array(history['true_alpha'])
     history['true_y'] = np.array(history['true_y'])
     history['yp'] = [np.array(yp) for yp in history['yp']]
@@ -241,8 +248,8 @@ if __name__ == "__main__":
     # Main code translation
     Lox = 100
     Loy = 100
-    nx = 256
-    ny = 256
+    nx = 64
+    ny = 64
 
     numel = nx * ny
     numnodx, numnody = nx + 1, ny + 1
@@ -256,6 +263,7 @@ if __name__ == "__main__":
     # PCA to reduce parameter dimension
     NR = 400
     k = 50
+    mu = -4
 
     ucr = generate_random_field(
         NR,
@@ -264,7 +272,8 @@ if __name__ == "__main__":
         cov_type='gaussian',
         variance=sigma**2,
         lx=lx,
-        ly=ly
+        ly=ly,
+        mu=mu
     ).reshape(NR, -1)
 
     beta = np.mean(ucr)
@@ -277,7 +286,7 @@ if __name__ == "__main__":
     V = np.expand_dims(np.sqrt(S[:k]),axis=1)*Vt[:k]
     alpha = np.random.randn(k)
     # Generate synthetic random field
-    logK = (V.T @ alpha[:, np.newaxis]).flatten()
+    logK = mu + (V.T @ alpha[:, np.newaxis]).flatten()
 
     # logK = np.exp(np.random.randn(numel) * 0.1 - 2)  # Generate logK without extra dimension
     # logK[nx//5:nx//3, ny//4:ny//4*3] = 0
@@ -313,8 +322,10 @@ if __name__ == "__main__":
     # Save true values to json before optimization
     initial_history = {
         'true_alpha': alpha,
+        'true_mu': mu,
         'true_y': y0,
-        'b': [],
+        'alpha': [],
+        'mu': [],
         'loss': [],
         'lambda': [],
         'step_norm': [],
@@ -324,13 +335,13 @@ if __name__ == "__main__":
 
     b, opt_history = gauss_newton_dynamic_lambda(
         lambda b: forward_model(b, V.T, Q, well_nodes),
-        b0=np.zeros(k),
+        b0=np.concatenate((np.zeros(k), np.array([beta]))),
         y_obs=y,
         lam_init=1e-3,
         max_iter=10,
         tol=1e-5,
         history=initial_history,
-        adaptive_lambda=True,
+        adaptive_lambda=False,
         anneal_lambda=True,
         min_lambda=1e-5
     )
@@ -341,10 +352,13 @@ if __name__ == "__main__":
     predicted_heads = history['yp'][-1]
     mae, rmse, mse, l2_relative_error = head_metrics(true_heads, predicted_heads)
 
-    predicted_alpha = history['b'][-1]
+    predicted_alpha = history['alpha'][-1]
+    predicted_mu = history['mu'][-1]
+
     true_alpha = history['true_alpha']
-    reconstructed_field = np.squeeze(V.T @ predicted_alpha[:, np.newaxis],axis=1)
-    true_field = np.squeeze(V.T @ true_alpha[:, np.newaxis])
+    true_mu = history['true_mu']
+    reconstructed_field = np.squeeze(V.T @ predicted_alpha[:, np.newaxis],axis=1) + predicted_mu
+    true_field = np.squeeze(V.T @ true_alpha[:, np.newaxis]) + true_mu
 
     conductivity_metrics(true_field, reconstructed_field)
 

@@ -8,6 +8,7 @@ from sympy import symbols, diff, integrate
 import mat73
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+from utils import plot_comparison_and_compute_errors
 
 
 # element stiffness
@@ -35,55 +36,40 @@ def elemstiff2d(nel,hx,hy):
 
 def apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values):
     """
-    Apply Dirichlet boundary conditions directly to the global stiffness matrix and force vector.
+    Apply Dirichlet boundary conditions to the stiffness matrix and force vector.
 
     Args:
         bigk (scipy.sparse.csr_matrix): Global stiffness matrix.
-        force (ndarray): Global force vector.
+        force (ndarray): Force vector.
         dirichlet_nodes (ndarray): Indices of Dirichlet nodes.
-        dirichlet_values (ndarray): Values to impose at Dirichlet nodes.
+        dirichlet_values (ndarray): Values to impose at the Dirichlet nodes.
 
     Returns:
-        bigk (scipy.sparse.csr_matrix): Modified stiffness matrix.
-        force (ndarray): Modified force vector.
+        tuple:
+            - bigk (scipy.sparse.csr_matrix): Updated stiffness matrix.
+            - force (ndarray): Updated force vector with Dirichlet contributions applied.
     """
-
-    # Sparse matrix slicing for boundary columns
     dirichlet_contributions = bigk[:, dirichlet_nodes].dot(dirichlet_values)
-    force -= dirichlet_contributions  # Subtract Dirichlet contributions from the force vector
-
-    # Mask for non-Dirichlet nodes
-    mask = np.ones(bigk.shape[0], dtype=bool)
-    mask[dirichlet_nodes] = False
-
-    # Reduce system for non-Dirichlet nodes
-    bigk_reduced = bigk[mask, :][:, mask]
-    force_reduced = force[mask]
-
-    return bigk_reduced, force_reduced
+    force -= dirichlet_contributions
+    return force
 
 
-def assemble_matrix(numnodx, numnody, fe0, K, Q, dirichlet_nodes, dirichlet_values, point_source_loc):
+def assemble_matrix(numnodx, numnody, stiffness, K):
     """
-    Prepare the reduced global stiffness matrix and force vector, incorporating the effects of Dirichlet boundary conditions.
+    Assemble the global stiffness matrix for the finite element model.
 
     Args:
         numnodx (int): Number of nodes in the x direction.
         numnody (int): Number of nodes in the y direction.
-        fe0 (ndarray): Element stiffness matrix (4x4 for 2D elements).
-        K (ndarray): Array of element permeability values.
-        Q (float): Source/sink term.
+        stiffness (ndarray): Local element stiffness matrix.
+        K (ndarray): Permeability field.
 
     Returns:
-        bigk_reduced (scipy.sparse.csr_matrix): Reduced global stiffness matrix.
-        force_reduced (ndarray): Reduced force vector.
-        solution_full (ndarray): Full solution vector with boundary values set to 1 (left) and 0 (right).
+        scipy.sparse.csr_matrix: Assembled global stiffness matrix.
     """
-    # Number of elements and nodes
     numel = (numnodx - 1) * (numnody - 1)
     numnod = numnodx * numnody
 
-    # Create connectivity matrix
     quotient, remainder = divmod(np.arange(numel), numnodx - 1)
     connect_mat = np.column_stack((
         remainder + quotient * numnodx,
@@ -92,20 +78,12 @@ def assemble_matrix(numnodx, numnody, fe0, K, Q, dirichlet_nodes, dirichlet_valu
         remainder + quotient * numnodx + numnodx + 1
     ))
 
-    # Assemble global stiffness matrix
     sctr_rows = connect_mat.repeat(4, axis=1).flatten()
     sctr_cols = np.tile(connect_mat, 4).flatten()
-    ke_values = (fe0 * K[:, None, None]).reshape(numel, -1).flatten()
+    ke_values = (stiffness * K[:, None, None]).reshape(numel, -1).flatten()
     bigk = sp.coo_matrix((ke_values, (sctr_rows, sctr_cols)), shape=(numnod, numnod)).tocsr()
 
-    # Initialize force vector
-    force = np.zeros(numnod)
-    force[point_source_loc] = Q  # Set the source/sink term
-    
-    bigk_reduced, force_reduced = apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values)
-
-    return bigk_reduced, force_reduced
-
+    return bigk
 
 def groundwater_solver(K, well_node, Q):
     """
@@ -187,42 +165,9 @@ def calculate_flux(head_solved, K, numnodx, numnody, dx, dy):
 
     return qx, qy
 
-def plot_flux_map_streamlines(head_solved, qx, qy, dx, dy):
-    """
-    Plot the flux map using streamlines.
 
-    Args:
-        head_solved (ndarray): Solved hydraulic head (numnodx x numnody grid).
-        qx (ndarray): Flux in x direction.
-        qy (ndarray): Flux in y direction.
-        dx (float): Element size in x direction.
-        dy (float): Element size in y direction.
-    """
-    numnodx, numnody = head_solved.shape
 
-    # Create coordinate grid for plotting
-    x = np.linspace(0, dx * (numnodx - 1), numnodx)
-    y = np.linspace(0, dy * (numnody - 1), numnody)
-    X, Y = np.meshgrid(x, y)
-
-    # Reduce flux grid size for visualization
-    # Create coordinate grid for plotting
-    speed = np.sqrt(qx**2 + qy**2)
-    lw = 5*speed / speed.max()
-    x = np.linspace(0, dx * (numnodx - 2), numnodx-1)
-    y = np.linspace(0, dy * (numnody - 2), numnody-1)
-    X_mid, Y_mid = np.meshgrid(x, y)
-
-    plt.figure(figsize=(10, 8))
-    plt.contourf(X, Y, head_solved, levels=20, cmap='viridis', alpha=1)
-    plt.colorbar(label="Hydraulic Head")
-    plt.streamplot(X_mid, Y_mid, qy, qx, color='black', density=[0.5, 2], linewidth=1, broken_streamlines=True)
-    plt.title("Streamlines with Hydraulic Head Contours")
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.savefig("flux_map_streamlines.png", dpi=300, transparent=True)
-
-def test_solver_accuracy(mat_filename):
+def test_solver_accuracy(mat_filename, plot_flag=False):
     """
     Test the solver accuracy by comparing the results with a reference solution.
     """
@@ -253,69 +198,51 @@ def test_solver_accuracy(mat_filename):
     
     print("Elapsed time for solving system:", time.time() - t0)
     
-    fig,ax = plt.subplots(figsize=(7,6))
-    hmin, hmax = np.min(head.flatten()), np.max(head.flatten())
-    im = ax.pcolormesh(head, cmap='viridis', vmin=hmin, vmax=hmax)
-    lvls = np.linspace(-10,-0.1,7)
-    cmp_str = 'RdBu'
-    CT = ax.contour(head, levels=lvls,cmap=cmp_str)
-    ax.clabel(CT,fontsize=15,inline=True,inline_spacing=1,fmt='%.1f')
-    cbar = fig.colorbar(im, ax=ax)
-    ax.set_title('Matlab FEM')
-
-
-    fig,ax = plt.subplots(figsize=(7,6))
-    im = ax.pcolormesh(head_solved, cmap='viridis')
-
-    # im = ax.pcolormesh(head_solved, cmap='viridis', vmin=hmin, vmax=hmax)
-    CT = ax.contour(head_solved, levels=lvls,cmap=cmp_str)
-    ax.clabel(CT,fontsize=15,inline=True,inline_spacing=1,fmt='%.1f')
-    cbar = fig.colorbar(im, ax=ax)
-    ax.set_title('Python FEM')
-
+    # Compute error metrics
     L1_err = np.abs(head_solved.flatten() - head.flatten()).sum()
     L2_err = np.square(head_solved.flatten() - head.flatten()).sum()
     Max_err = np.square(head_solved.flatten() - head.flatten()).max()
+        
+    print(f"L1 Error: {L1_err:.6e}")
+    print(f"L2 Error: {L2_err:.6e}")
+    print(f"Maximum Error: {Max_err:.6e}")
 
-    print(L1_err)
-    print(L2_err)
-    print(Max_err)
-    plt.show()
-
+    if plot_flag:
+        plot_comparison_and_compute_errors(head, head_solved)
 
 
 # Example usage
 if __name__ == "__main__":
 
-    test_solver_accuracy("./data/benchmark_1024.mat")
+    test_solver_accuracy("./data/benchmark_1024.mat", plot_flag=True)
     
-    # # Define domain parameters
-    # nx, ny = 1024, 1024 # domain resolution
-    # numel = nx * ny
-    # numnodx, numnody = nx + 1, ny + 1
-    # numnod = numnodx * numnody
-    # Lox, Loy = 320.0, 320.0 # domain real size, m
-    # dx, dy = Lox / nx, Loy / ny
-    # stiffness = elemstiff2d(4, dx, dy)
+    # Define domain parameters
+    nx, ny = 1024, 1024 # domain resolution
+    numel = nx * ny
+    numnodx, numnody = nx + 1, ny + 1
+    numnod = numnodx * numnody
+    Lox, Loy = 320.0, 320.0 # domain real size, m
+    dx, dy = Lox / nx, Loy / ny
+    stiffness = elemstiff2d(4, dx, dy)
     
-    # K = np.exp(np.random.randn(numel) * 0.1 - 4)  # Generate K without extra dimension
-    # K = K.reshape((nx, ny))
-    # K[nx//5:nx//3, ny//4:ny//4*3] = np.exp(-5) 
-    # K[nx//3*2:nx//5*4, ny//4:ny//4*3] = np.exp(-8) 
-    # K = K.flatten()
+    K = np.exp(np.random.randn(numel) * 0.1 - 4)  # Generate K without extra dimension
+    K = K.reshape((nx, ny))
+    K[nx//5:nx//3, ny//4:ny//4*3] = np.exp(-5) 
+    K[nx//3*2:nx//5*4, ny//4:ny//4*3] = np.exp(-8) 
+    K = K.flatten()
 
-    # # Original pumping rate
-    # q_original = -0.002  # m³/s
-    # # Area associated with each node (element)
-    # A = Lox/nx  * Loy/ny
-    # # Flux density (in m³/s per m²)
-    # Q = q_original / A * 3600
+    # Original pumping rate
+    q_original = -0.002  # m³/s
+    # Area associated with each node (element)
+    A = Lox/nx  * Loy/ny
+    # Flux density (in m³/s per m²)
+    Q = q_original / A * 3600
 
-    # # Identify Dirichlet boundary nodes
-    # left_boundary = np.arange(numnody) * numnodx  # Left boundary nodes
-    # right_boundary = left_boundary + (numnodx - 1)  # Right boundary nodes
-    # # Incorporate Dirichlet boundary effects efficiently
-    # dirichlet_nodes = np.concatenate((left_boundary, right_boundary))
+    # Identify Dirichlet boundary nodes
+    left_boundary = np.arange(numnody) * numnodx  # Left boundary nodes
+    right_boundary = left_boundary + (numnodx - 1)  # Right boundary nodes
+    # Incorporate Dirichlet boundary effects efficiently
+    dirichlet_nodes = np.concatenate((left_boundary, right_boundary))
 
     # # Set Dirichlet boundary values
     # solution_full = np.zeros(numnod)  # Full solution vector

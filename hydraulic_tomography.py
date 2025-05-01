@@ -27,7 +27,7 @@ def apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values):
     return force
 
 
-def assemble_matrix(numnodx, numnody,   stiffness, K):
+def assemble_matrix(numnodx, numnody, stiffness, K):
     """
     Assemble the global stiffness matrix for the finite element model.
 
@@ -92,8 +92,8 @@ def hydraulic_tomography(K, well_locs, Q):
     bigk = assemble_matrix(numnodx, numnody, stiffness, K)
     
     force = np.zeros(numnod)
-    dirichlet_contributions = bigk[:, dirichlet_nodes].dot(dirichlet_values)
-    force -= dirichlet_contributions
+
+    force = apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values)
     
     mask = np.ones(numnod, dtype=bool)
     mask[dirichlet_nodes] = False

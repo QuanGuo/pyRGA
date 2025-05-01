@@ -5,6 +5,8 @@ import numpy as np
 from scipy.sparse.linalg import cg
 from gwsolver_2D_steady_state import groundwater_solver
 import time
+import matplotlib.pyplot as plt
+
 # Function to compute groundwater solution
 def compute_head(well_loc, K, Q):
     return groundwater_solver(K, well_loc, Q=Q)

@@ -4,11 +4,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="gwsolver",
+    name="pyrga",
     version="0.1.0",
     author="Quan Guo",
     author_email="qguo48@hotmail.com",
-    description="A Python package for groundwater flow simulation and hydraulic tomography",
+    description="A Python package for groundwater flow simulation and hydraulic tomography using the Reformulated Geostatistical Approach (RGA)",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/QuanGuo/GWSolver",

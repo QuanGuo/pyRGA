@@ -281,7 +281,7 @@ def conductivity_metrics(true_field, predicted_field, accuracy_threshold=0.1):
     return l2_relative_error, accuracy
 
 if __name__ == "__main__":
-    # Main code translation
+    # numerical domain/mesh: regular grid
     Lox = 100
     Loy = 100
     nx = 64
@@ -290,70 +290,75 @@ if __name__ == "__main__":
     numel = nx * ny
     numnodx, numnody = nx + 1, ny + 1
     numnod = numnodx * numnody
-    Lox, Loy = 320, 320
-    dx, dy = Lox / nx, Loy / ny
 
-    sigma = 1.0
-    lx, ly = 0.15, 0.2
+    # random field
+    sigma = 1.0 # standard deviation
+    lx, ly = 0.15, 0.2 # correlation length (to numerical domain length)
 
     # PCA to reduce parameter dimension
-    NR = 400
-    k = 50
-    mu = -4
+    NR = 400 # number of random fields to estimate the covariance
+
+    mu = -4 # mean of the random field
 
     ucr = generate_random_field(
         NR,
         Nx=nx,
         Ny=ny,
-        cov_type='gaussian',
-        variance=sigma**2,
-        lx=lx,
-        ly=ly,
-        mu=mu
+        cov_type='gaussian', # covariance type  
+        variance=sigma**2, # variance of the random field
+        lx=lx, # correlation length in x direction
+        ly=ly, # correlation length in y direction
+        mu=mu # mean of the random field
     ).reshape(NR, -1)
 
-    beta = np.mean(ucr)
+    beta = np.mean(ucr) # estimated mean of the random field
 
     # Conduct SVD
     U, S, Vt = svd(ucr - beta, full_matrices=False)
 
     # Generate the pseudo-eigenvectors
-    k = 50
+    k = 50 # number of retained principal components
     V = np.expand_dims(np.sqrt(S[:k]),axis=1)*Vt[:k]
+
+    # Generate random coefficients/latent variables
     alpha = np.random.randn(k)
+
     # Generate synthetic random field
     logK = mu + (V.T @ alpha[:, np.newaxis]).flatten()
 
-    # logK = np.exp(np.random.randn(numel) * 0.1 - 2)  # Generate logK without extra dimension
+    # logK = np.exp(np.random.randn(numel) * 0.1 - 2)  # Generate hardcoded logK
     # logK[nx//5:nx//3, ny//4:ny//4*3] = 0
     # logK[nx//3*2:nx//5*4, ny//4:ny//4*3] = -4
 
-    K = np.exp(logK)
+    K = np.exp(logK) # conductivity field in m/s
 
-    q_original = -0.02 * (64/nx)**2 # m3/s
-    Q = q_original/dx/dy*3600
+    # physical domain
+    Lox, Loy = 320, 320 # length of the domain in meter
+    dx, dy = Lox / nx, Loy / ny # grid size in meter
+    q_original = -0.02 * (64/nx)**2 # orginal pumping rate in m3/s
+    Q = q_original/dx/dy*3600 # applied force on the grid: -2.88 m/hr
 
     well_relative_locs = []
     horizontal_relative_locs = vertial_relative_locs = [0.25, 0.375, 0.5, 0.625, 0.75]
     for h in horizontal_relative_locs:
         for v in vertial_relative_locs:
-            well_relative_locs.append((h,v))
+            well_relative_locs.append((h,v)) # relative locations of the wells in the numerical domain
 
-    well_nodes = [int(x*numnodx)+int(y*numnody)*numnodx for x, y in well_relative_locs]
+    well_nodes = [int(x*numnodx)+int(y*numnody)*numnodx for x, y in well_relative_locs] # indices of the wells in the model grid
 
     t0 = time.time()
-    hydraulic_heads = hydraulic_tomography(K, well_nodes, Q)
+    hydraulic_heads = hydraulic_tomography(K, well_nodes, Q) # solve the hydraulic heads at the well locations
     print("Elapsed time for solving HT:", time.time() - t0)
 
     # observations
-    y0 = observation_operator(hydraulic_heads, well_nodes)
+    y0 = observation_operator(hydraulic_heads, well_nodes) # flatten the hydraulic heads at the well locations
 
     # Add random errors
     Nobv = len(y0)
     rng = np.random.default_rng()
     noise_level = 0.05
     obv_error = np.abs(y0) * rng.normal(0, noise_level, Nobv)
-    y = y0 + obv_error
+    y = y0 + obv_error # add random errors to the observations
 
     # Save true values to json before optimization
     initial_history = {
@@ -369,6 +374,7 @@ if __name__ == "__main__":
         'yp': []
     }
 
+    # Optimization
     b, opt_history = gauss_newton_dynamic_lambda(
         lambda b: forward_model(b, V.T, Q, well_nodes),
         b0=np.concatenate((np.zeros(k), np.array([beta]))),
@@ -382,20 +388,27 @@ if __name__ == "__main__":
         min_lambda=1e-5
     )
 
+    # Load the optimization history
     history = load_history()
 
+    # Extract the true and predicted heads
     true_heads = history['true_y']
     predicted_heads = history['yp'][-1]
     mae, rmse, mse, l2_relative_error = head_metrics(true_heads, predicted_heads)
 
+    # Extract the true and predicted alpha
     predicted_alpha = history['alpha'][-1]
     predicted_mu = history['mu'][-1]
 
+    # Extract the true alpha
     true_alpha = history['true_alpha']
     true_mu = history['true_mu']
+
+    # Reconstruct the field
     reconstructed_field = np.squeeze(V.T @ predicted_alpha[:, np.newaxis],axis=1) + predicted_mu
     true_field = np.squeeze(V.T @ true_alpha[:, np.newaxis]) + true_mu
 
+    # Compute the conductivity metrics
     conductivity_metrics(true_field, reconstructed_field)
 
     # Plot the solution
@@ -413,12 +426,14 @@ if __name__ == "__main__":
     # Plot the heads comparison
     plot_observations_vs_predictions(true_heads, predicted_heads)
 
+    # compute the head fields
     true_head_field = hydraulic_tomography(np.exp(true_field), well_nodes, Q)
     predicted_head_field = hydraulic_tomography(np.exp(reconstructed_field), well_nodes, Q)
 
-
+    # Plot the head fields
     pump_id = 0 # 0, 1, 2, 3, 4 
     plot_head_fields(true_head_field[pump_id].reshape((nx+1, ny+1)), predicted_head_field[pump_id].reshape((nx+1, ny+1)))
 
+    # compute the head metrics
     mae, rmse, mse, l2_relative_error = head_metrics(true_head_field[pump_id], predicted_head_field[pump_id])
 

@@ -11,7 +11,7 @@ setup(
     description="A Python package for groundwater flow simulation and hydraulic tomography using the Reformulated Geostatistical Approach (RGA)",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/QuanGuo/GWSolver",
+    url="https://github.com/QuanGuo/pyRGA",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     classifiers=[

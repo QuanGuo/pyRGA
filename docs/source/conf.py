@@ -4,8 +4,8 @@ sys.path.insert(0, os.path.abspath('../../src'))
 
 # -- Project information -----------------------------------------------------
 project = 'pyRGA'
-copyright = '2024, Your Name'
-author = 'Your Name'
+copyright = '2024, Quan Guo'
+author = 'Quan Guo'
 
 # -- General configuration ---------------------------------------------------
 extensions = [

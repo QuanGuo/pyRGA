@@ -1,9 +1,14 @@
+"""
+Reformulated Geostatistical Approach (RGA) module for hydraulic tomography analysis.
+This module implements the RGA method for estimating hydraulic conductivity fields.
+"""
+
 import numpy as np
 import time
 import json
 from scipy.linalg import svd
 import os
-
+from scipy.special import gamma
 # Set working directory to script location
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
@@ -26,6 +31,7 @@ def generate_random_field(n_reals=1, Nx=256, Ny=256,
     n_reals  : Number of realizations (squeezed if 1)
     Nx, Ny   : Grid dimensions
     cov_type : 'gaussian', 'exponential', or 'matern'
+    mu       : Mean of the field
     variance : Field variance
     lx, ly   : Correlation lengths in x/y directions
     nu       : Smoothness parameter for Matérn covariance
@@ -70,6 +76,16 @@ def generate_random_field(n_reals=1, Nx=256, Ny=256,
     return np.squeeze(field, axis=0) if n_reals == 1 else field
 
 def observation_operator(hydraulic_heads, well_nodes):
+    """
+    Create observation operator for hydraulic tomography.
+    
+    Args:
+        hydraulic_heads (ndarray): Matrix of hydraulic heads for each well
+        well_nodes (list): List of well node indices
+        
+    Returns:
+        ndarray: Flattened vector of head differences between well pairs
+    """
     obs = np.empty((len(well_nodes), len(well_nodes) - 1))
     for i, _ in enumerate(well_nodes):
         obs[i] = hydraulic_heads[i, well_nodes[:i]+well_nodes[i+1:]].flatten()
@@ -108,6 +124,24 @@ def gauss_newton_dynamic_lambda(
     anneal_lambda=True,
     min_lambda=1e-5
 ):
+    """
+    Gauss-Newton optimization with dynamic lambda adjustment.
+    
+    Args:
+        f (callable): Forward model function
+        b0 (ndarray): Initial parameter vector
+        y_obs (ndarray): Observed data vector
+        lam_init (float): Initial lambda value for regularization
+        max_iter (int): Maximum number of iterations
+        tol (float): Convergence tolerance
+        history (dict): Dictionary to store optimization history
+        adaptive_lambda (bool): Whether to adapt lambda based on loss
+        anneal_lambda (bool): Whether to anneal lambda over iterations
+        min_lambda (float): Minimum allowed lambda value
+        
+    Returns:
+        tuple: (optimized parameters, optimization history)
+    """
     b = b0.copy()
     lam = lam_init
 

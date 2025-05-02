@@ -1,57 +1,66 @@
+# GWSolver
 
-# **GWSolver**
-Groundwater Solver for Darcy Flow in Porous Media.
+A Python package for groundwater flow simulation and hydraulic tomography using the Reformulated Geostatistical Approach (RGA).
 
----
+## Features
 
-## **Table of Contents**
-1. [Repository Usage](#repository-usage)
-2. [Environment Setup](#environment-setup)
-3. [Test Data](#test-data)
-4. [Testing Instructions](#testing-instructions)
+- 2D steady-state and transient groundwater flow simulation
+- Hydraulic tomography analysis
+- Reformulated Geostatistical Approach (RGA) for parameter estimation
+- Parallel computation support
+- Visualization tools for hydraulic head and conductivity fields
 
----
+## Installation
 
-## **Repository Usage**
-- This project uses the `dev` branch for active development.  
-  Ensure you switch to the `dev` branch before making any changes:
-  ```bash
-  git checkout dev
-  ```
+```bash
+pip install gwsolver
+```
 
----
+## Quick Start
 
-## **Environment Setup**
-- To set up the required environment, refer to the [`environment.yml`](./environment.yml) file.
-- Use the following command to create the environment:
-  ```bash
-  conda env create -f environment.yml
-  ```
+```python
+import numpy as np
+from gwsolver import hydraulic_tomography, RGA
 
----
+# Define domain parameters
+nx, ny = 64, 64
+K = np.exp(np.random.randn(nx * ny) * 0.1 - 2)
 
-## **Test Data**
-- Download the required test data from the following link:  
-  [Test Data Folder](https://drive.google.com/drive/folders/1_8SIsaUw16l-K4Jw-j6atwFFgIJmCYDR?usp=sharing)
-  
-  **Files:**
-  - `benchmark_1024.mat`: For testing in `gwsolver_2D_steady_state.py`.
-  - `benchmark_1024_transient.mat`: For testing in `gwsolver_2D_transient.py`.
+# Define well locations
+well_locs = [(0.25, 0.25), (0.75, 0.75)]
+well_nodes = [int(x*nx) + int(y*ny)*nx for x, y in well_locs]
 
----
+# Solve hydraulic tomography
+Q = -0.1  # Pumping rate
+heads = hydraulic_tomography(K, well_nodes, Q)
 
-## **Testing Instructions**
-1. Place the downloaded test data in the appropriate directory of your project.
-2. Use the corresponding Python scripts for testing:
-   - **Steady State Solver:**
-     ```bash
-     python gwsolver_2D_steady_state.py
-     ```
-   - **Transient Solver:**
-     ```bash
-     python gwsolver_2D_transient.py
-     ```
+# Use RGA for parameter estimation
+rga = RGA()
+estimated_K = rga.estimate_conductivity(heads, well_nodes)
+```
 
----
+## Documentation
 
-Feel free to suggest improvements or raise issues for better collaboration. 🚀
+For detailed documentation, please visit [Read the Docs](https://gwsolver.readthedocs.io/).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Citation
+
+If you use this software in your research, please cite:
+
+```bibtex
+@software{gwsolver2024,
+  author = {Quan Guo},
+  title = {GWSolver: A Python package for groundwater flow simulation and hydraulic tomography},
+  year = {2024},
+  publisher = {GitHub},
+  url = {https://github.com/QuanGuo/GWSolver}
+}
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

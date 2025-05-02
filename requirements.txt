@@ -1,0 +1,9 @@
+numpy>=1.21
+scipy>=1.8
+matplotlib>=3.5
+pyamg>=4.2
+mat73
+joblib
+sphinx>=4.0
+sphinx-rtd-theme>=0.5
+numpydoc>=1.1 

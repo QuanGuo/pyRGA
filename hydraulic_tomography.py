@@ -1,3 +1,8 @@
+"""
+Hydraulic Tomography Module.
+This module implements hydraulic tomography methods for groundwater flow analysis.
+"""
+
 import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
@@ -10,17 +15,15 @@ import time
 def apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values):
     """
     Apply Dirichlet boundary conditions to the stiffness matrix and force vector.
-
+    
     Args:
-        bigk (scipy.sparse.csr_matrix): Global stiffness matrix.
-        force (ndarray): Force vector.
-        dirichlet_nodes (ndarray): Indices of Dirichlet nodes.
-        dirichlet_values (ndarray): Values to impose at the Dirichlet nodes.
-
+        bigk (scipy.sparse.csr_matrix): Global stiffness matrix
+        force (ndarray): Force vector
+        dirichlet_nodes (ndarray): Indices of Dirichlet nodes
+        dirichlet_values (ndarray): Values to impose at the Dirichlet nodes
+        
     Returns:
-        tuple:
-            - bigk (scipy.sparse.csr_matrix): Updated stiffness matrix.
-            - force (ndarray): Updated force vector with Dirichlet contributions applied.
+        tuple: (updated stiffness matrix, updated force vector)
     """
     dirichlet_contributions = bigk[:, dirichlet_nodes].dot(dirichlet_values)
     force -= dirichlet_contributions
@@ -30,15 +33,15 @@ def apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values):
 def assemble_matrix(numnodx, numnody, stiffness, K):
     """
     Assemble the global stiffness matrix for the finite element model.
-
+    
     Args:
-        numnodx (int): Number of nodes in the x direction.
-        numnody (int): Number of nodes in the y direction.
-        stiffness (ndarray): Local element stiffness matrix.
-        K (ndarray): Permeability field.
-
+        numnodx (int): Number of nodes in x direction
+        numnody (int): Number of nodes in y direction
+        stiffness (ndarray): Local element stiffness matrix
+        K (ndarray): Permeability field
+        
     Returns:
-        scipy.sparse.csr_matrix: Assembled global stiffness matrix.
+        scipy.sparse.csr_matrix: Assembled global stiffness matrix
     """
     numel = (numnodx - 1) * (numnody - 1)
     numnod = numnodx * numnody

@@ -8,6 +8,7 @@ from sympy import symbols, diff, integrate
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+
 # element stiffness
 def elemstiff2d(nel,hx,hy):
   x, y = symbols(['x', 'y'])
@@ -64,6 +65,7 @@ def assemble_transient_matrix(numnodx, numnody, fe0, K):
     bigk_flow = sp.coo_matrix((ke_values, (sctr_rows, sctr_cols)), shape=(numnod, numnod)).tocsr()
 
     return bigk_flow
+
 
 def apply_dirichlet_conditions(bigk, force, dirichlet_nodes, dirichlet_values):
     """

@@ -135,8 +135,10 @@ def gauss_newton_dynamic_lambda(
             b_eps[i] += eps
             J[:, i] = (f(b_eps) / scale - yp) / eps
 
+        Dump = np.eye(len(b))
+        Dump[-1,-1] = 0.0
 
-        H = J.T @ J/lam + np.eye(len(b))
+        H = J.T @ J/lam + Dump
         g = J.T @ (r+J@b)/lam
         delta = np.linalg.solve(H, g)
         b_new = delta

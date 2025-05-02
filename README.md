@@ -22,20 +22,18 @@ pip install gwsolver
 
 ```python
 import numpy as np
-from gwsolver import hydraulic_tomography, RGA
+from gwsolver import hydraulic_tomography
+from gwsolver.RGA import prepare_physical_domain
 
 # Define domain parameters
 nx, ny = 64, 64
 K = np.exp(np.random.randn(nx * ny) * 0.1 - 2)
 
-# Define well locations
-well_locs = [(0.25, 0.25), (0.75, 0.75)]
-well_nodes = [int(x*nx) + int(y*ny)*nx for x, y in well_locs]
+# Prepare well configuration
+well_nodes, Q, _, _ = prepare_physical_domain(nx, ny)
 
 # Solve hydraulic tomography
-Q = -0.1  # Pumping rate
 heads = hydraulic_tomography(K, well_nodes, Q)
-
 ```
 
 ### Complete Optimization Example
@@ -43,61 +41,39 @@ heads = hydraulic_tomography(K, well_nodes, Q)
 ```python
 import numpy as np
 import time
-from gwsolver import hydraulic_tomography, RGA
-from gwsolver.RGA import generate_random_field, observation_operator, forward_model, gauss_newton_dynamic_lambda
+from gwsolver import hydraulic_tomography
+from gwsolver.RGA import (
+    generate_synthetic_field,
+    prepare_physical_domain,
+    observation_operator,
+    forward_model,
+    gauss_newton_dynamic_lambda,
+    add_noise
+)
 
 # Define numerical domain parameters
-Lox = Loy = 100  # Domain size
 nx = ny = 64     # Grid resolution
-numel = nx * ny
-numnodx = numnody = nx + 1
-numnod = numnodx * numnody
 
-# Random field parameters
-sigma = 1.0      # Standard deviation
-lx, ly = 0.15, 0.2  # Correlation lengths
-NR = 400         # Number of random fields for covariance estimation
-mu = -4          # Mean of the random field
-
-# Generate random field using PCA
-ucr = generate_random_field(
-    NR,
-    Nx=nx,
-    Ny=ny,
+# Generate synthetic conductivity field
+K, alpha, V, beta = generate_synthetic_field(
+    nx, ny,
+    k=50,                    # Number of retained components
+    mu=-4,                   # Mean of the random field
+    NR=400,                  # Number of random fields
     cov_type='gaussian',
-    variance=sigma**2,
-    lx=lx,
-    ly=ly,
-    mu=mu
-).reshape(NR, -1)
+    variance=1.0,            # Standard deviation squared
+    lx=0.15,                # Correlation length in x
+    ly=0.2                  # Correlation length in y
+)
 
-beta = np.mean(ucr)  # Estimated mean
-
-# Perform SVD for dimension reduction
-U, S, Vt = np.linalg.svd(ucr - beta, full_matrices=False)
-k = 50  # Number of retained principal components
-V = np.expand_dims(np.sqrt(S[:k]), axis=1) * Vt[:k]
-
-# Generate synthetic random field
-alpha = np.random.randn(k)
-logK = mu + (V.T @ alpha[:, np.newaxis]).flatten()
-K = np.exp(logK)  # Conductivity field in m/s
-
-# Define physical domain and pumping parameters
-Lox = Loy = 320  # Domain length in meters
-dx = dy = Lox / nx  # Grid size in meters
-q_original = -0.02 * (64/nx)**2  # Original pumping rate in m³/s
-Q = q_original/dx/dy*3600  # Applied force: -2.88 m/hr
-
-# Define well locations
-well_relative_locs = []
-horizontal_locs = vertical_locs = [0.25, 0.375, 0.5, 0.625, 0.75]
-for h in horizontal_locs:
-    for v in vertical_locs:
-        well_relative_locs.append((h, v))
-
-well_nodes = [int(x*numnodx) + int(y*numnody)*numnodx 
-             for x, y in well_relative_locs]
+# Prepare physical domain and well configuration
+well_nodes, Q, dx, dy = prepare_physical_domain(
+    nx, ny,
+    Lox=320,                # Domain length in x direction (m)
+    Loy=320,                # Domain length in y direction (m)
+    q_original=-0.02,       # Original pumping rate in m³/s
+    well_relative_locs=None # Use default 5x5 grid of wells
+)
 
 # Solve hydraulic tomography
 t0 = time.time()
@@ -108,16 +84,12 @@ print(f"Elapsed time for solving HT: {time.time() - t0:.2f} seconds")
 y0 = observation_operator(hydraulic_heads, well_nodes)
 
 # Add measurement noise
-Nobv = len(y0)
-rng = np.random.default_rng()
-noise_level = 0.05
-obv_error = np.abs(y0) * rng.normal(0, noise_level, Nobv)
-y = y0 + obv_error
+y, obv_error = add_noise(y0, noise_level=0.05)
 
 # Initialize optimization history
 initial_history = {
     'true_alpha': alpha,
-    'true_mu': mu,
+    'true_mu': -4,
     'true_y': y0,
     'alpha': [],
     'mu': [],
@@ -131,7 +103,7 @@ initial_history = {
 # Run optimization
 b, opt_history = gauss_newton_dynamic_lambda(
     lambda b: forward_model(b, V.T, Q, well_nodes),
-    b0=np.concatenate((np.zeros(k), np.array([beta]))),
+    b0=np.concatenate((np.zeros(50), np.array([beta]))),
     y_obs=y,
     lam_init=1e-3,
     max_iter=10,

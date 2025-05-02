@@ -280,91 +280,229 @@ def conductivity_metrics(true_field, predicted_field, accuracy_threshold=0.1):
     print(f"Accuracy: {accuracy}")
     return l2_relative_error, accuracy
 
-if __name__ == "__main__":
-    # numerical domain/mesh: regular grid
-    Lox = 100
-    Loy = 100
-    nx = 64
-    ny = 64
-
-    numel = nx * ny
-    numnodx, numnody = nx + 1, ny + 1
-    numnod = numnodx * numnody
-
-    # random field
-    sigma = 1.0 # standard deviation
-    lx, ly = 0.15, 0.2 # correlation length (to numerical domain length)
-
-    # PCA to reduce parameter dimension
-    NR = 400 # number of random fields to estimate the covariance
-
-    mu = -4 # mean of the random field
-
+def perform_pca(Nx, Ny, NR=400, cov_type='gaussian', variance=1.0, lx=0.15, ly=0.2, mu=-4, k=50):
+    """
+    Perform Principal Component Analysis (PCA) on random fields to reduce parameter dimension.
+    
+    Parameters
+    ----------
+    Nx : int
+        Number of grid points in x direction
+    Ny : int
+        Number of grid points in y direction
+    NR : int, optional
+        Number of random fields to estimate the covariance, default=400
+    cov_type : str, optional
+        Type of covariance function, default='gaussian'
+    variance : float, optional
+        Variance of the random field, default=1.0
+    lx : float, optional
+        Correlation length in x direction, default=0.15
+    ly : float, optional
+        Correlation length in y direction, default=0.2
+    mu : float, optional
+        Mean of the random field, default=-4
+    k : int, optional
+        Number of retained principal components, default=50
+        
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - V : ndarray
+            Matrix of pseudo-eigenvectors (k x (Nx*Ny))
+        - beta : float
+            Estimated mean of the random field
+    """
+    # Generate random fields
     ucr = generate_random_field(
         NR,
-        Nx=nx,
-        Ny=ny,
-        cov_type='gaussian', # covariance type  
-        variance=sigma**2, # variance of the random field
-        lx=lx, # correlation length in x direction
-        ly=ly, # correlation length in y direction
-        mu=mu # mean of the random field
+        Nx=Nx,
+        Ny=Ny,
+        cov_type=cov_type,
+        variance=variance,
+        lx=lx,
+        ly=ly,
+        mu=mu
     ).reshape(NR, -1)
-
-    beta = np.mean(ucr) # estimated mean of the random field
-
-    # Conduct SVD
+    
+    # Calculate mean
+    beta = np.mean(ucr)
+    
+    # Perform SVD
     U, S, Vt = svd(ucr - beta, full_matrices=False)
+    
+    # Generate pseudo-eigenvectors
+    V = np.expand_dims(np.sqrt(S[:k]), axis=1) * Vt[:k]
+    
+    return V, beta
 
-    # Generate the pseudo-eigenvectors
-    k = 50 # number of retained principal components
-    V = np.expand_dims(np.sqrt(S[:k]),axis=1)*Vt[:k]
-
-    # Generate random coefficients/latent variables
+def generate_synthetic_field(Nx, Ny, k=50, mu=-4, **pca_kwargs):
+    """
+    Generate a synthetic conductivity field using PCA.
+    
+    Parameters
+    ----------
+    Nx : int
+        Number of grid points in x direction
+    Ny : int
+        Number of grid points in y direction
+    k : int, optional
+        Number of retained principal components, default=50
+    mu : float, optional
+        Mean of the random field, default=-4
+    **pca_kwargs : dict
+        Additional keyword arguments passed to perform_pca
+        
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - K : ndarray
+            Conductivity field in m/s
+        - alpha : ndarray
+            Random coefficients used to generate the field
+        - V : ndarray
+            Matrix of pseudo-eigenvectors
+        - beta : float
+            Estimated mean of the random field
+    """
+    # Perform PCA
+    V, beta = perform_pca(Nx, Ny, k=k, mu=mu, **pca_kwargs)
+    
+    # Generate random coefficients
     alpha = np.random.randn(k)
-
+    
     # Generate synthetic random field
     logK = mu + (V.T @ alpha[:, np.newaxis]).flatten()
+    K = np.exp(logK)  # conductivity field in m/s
+    
+    return K, alpha, V, beta
 
-    # logK = np.exp(np.random.randn(numel) * 0.1 - 2)  # Generate hardcoded logK
-    # logK[nx//5:nx//3, ny//4:ny//4*3] = 0
-    # logK[nx//3*2:nx//5*4, ny//4:ny//4*3] = -4
+def prepare_physical_domain(nx, ny, Lox=320, Loy=320, q_original=-0.02, well_relative_locs=None):
+    """
+    Prepare the physical domain and well configuration.
+    
+    Parameters
+    ----------
+    nx : int
+        Number of grid points in x direction
+    ny : int
+        Number of grid points in y direction
+    Lox : float, optional
+        Length of the domain in x direction in meters, default=320
+    Loy : float, optional
+        Length of the domain in y direction in meters, default=320
+    well_relative_locs : list of tuples, optional
+        List of (x, y) relative locations for wells. If None, uses default 5x5 grid.
+        
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - well_nodes : list
+            Indices of well locations in the model grid
+        - Q : float
+            Applied force in m/hr
+        - dx : float
+            Grid size in x direction
+        - dy : float
+            Grid size in y direction
+    """
+    # Calculate grid dimensions
+    numnodx, numnody = nx + 1, ny + 1
+    dx, dy = Lox / nx, Loy / ny
+    
+    # Calculate pumping rate
+    Q = q_original/dx/dy*3600  # Applied force: -2.88 m/hr
+    
+    # Define well locations if not provided
+    if well_relative_locs is None:
+        well_relative_locs = []
+        horizontal_locs = vertical_locs = [0.25, 0.375, 0.5, 0.625, 0.75]
+        for h in horizontal_locs:
+            for v in vertical_locs:
+                well_relative_locs.append((h, v))
+    
+    # Calculate well node indices
+    well_nodes = [int(x*numnodx) + int(y*numnody)*numnodx 
+                 for x, y in well_relative_locs]
+    
+    return well_nodes, Q, dx, dy
 
-    K = np.exp(logK) # conductivity field in m/s
-
-    # physical domain
-    Lox, Loy = 320, 320 # length of the domain in meter
-    dx, dy = Lox / nx, Loy / ny # grid size in meter
-    q_original = -0.02 * (64/nx)**2 # orginal pumping rate in m3/s
-    Q = q_original/dx/dy*3600 # applied force on the grid: -2.88 m/hr
-
-    well_relative_locs = []
-    horizontal_relative_locs = vertial_relative_locs = [0.25, 0.375, 0.5, 0.625, 0.75]
-    for h in horizontal_relative_locs:
-        for v in vertial_relative_locs:
-            well_relative_locs.append((h,v)) # relative locations of the wells in the numerical domain
-
-    well_nodes = [int(x*numnodx)+int(y*numnody)*numnodx for x, y in well_relative_locs] # indices of the wells in the model grid
-
-    t0 = time.time()
-    hydraulic_heads = hydraulic_tomography(K, well_nodes, Q) # solve the hydraulic heads at the well locations
-    print("Elapsed time for solving HT:", time.time() - t0)
-
-    # observations
-    y0 = observation_operator(hydraulic_heads, well_nodes) # flatten the hydraulic heads at the well locations
-
+def add_noise(y0, noise_level=0.05, rng=None):
+    """
+    Add random noise to observations.
+    
+    Parameters
+    ----------
+    y0 : ndarray
+        Original observations without noise
+    noise_level : float, optional
+        Level of noise to add (standard deviation), default=0.05
+    rng : numpy.random.Generator, optional
+        Random number generator. If None, creates a new one.
+        
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - y : ndarray
+            Observations with added noise
+        - obv_error : ndarray
+            The added noise
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+    
     # Add random errors
-    Nobv = len(y0)
-    rng = np.random.default_rng()
-    noise_level = 0.05
-    obv_error = np.abs(y0) * rng.normal(0, noise_level, Nobv)
-    y = y0 + obv_error # add random errors to the observations
+    obv_error = np.abs(y0) * rng.normal(0, noise_level, len(y0))
+    y = y0 + obv_error
+    
+    return y, obv_error
+
+if __name__ == "__main__":
+    # numerical domain/mesh: regular grid
+    nx = 64
+    ny = 64
+    
+    # random field properties
+    sigma = 1.0 # standard deviation
+    lx, ly = 0.15, 0.2 # correlation length (to numerical domain length)
+    mu = -4 # mean of the random field
+    k = 50 # number of retained principal components
+    
+    # Generate synthetic field
+    K, alpha, V, beta = generate_synthetic_field(
+        nx, ny,
+        k=k,
+        mu=mu,
+        NR=400,
+        cov_type='gaussian',
+        variance=sigma**2,
+        lx=lx,
+        ly=ly
+    )
+    
+    # Prepare physical domain and well configuration
+    well_nodes, Q, dx, dy = prepare_physical_domain(nx, ny, Lox=320, Loy=320, q_original=-0.02)
+    
+    # Solve hydraulic tomography
+    t0 = time.time()
+    hydraulic_heads = hydraulic_tomography(K, well_nodes, Q)
+    print("Elapsed time for solving HT:", time.time() - t0)
+    
+    # Prepare observations
+    y0 = observation_operator(hydraulic_heads, well_nodes)
+    
+    # Add measurement noise
+    y, obv_error = add_noise(y0, noise_level=0.05)
 
     # Save true values to json before optimization
     initial_history = {
         'true_alpha': alpha,
         'true_mu': mu,
-        'true_y': y0,
+        'true_y': y,
         'alpha': [],
         'mu': [],
         'loss': [],

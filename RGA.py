@@ -174,8 +174,7 @@ def gauss_newton_dynamic_lambda(
 
         H = J.T @ J/lam + Dump
         g = J.T @ (r+J@b)/lam
-        delta = np.linalg.solve(H, g)
-        b_new = delta
+        b_new = np.linalg.solve(H, g)
 
         yp_new = f(b_new) / scale
         r_new = y_obs_norm - yp_new
@@ -209,7 +208,6 @@ def gauss_newton_dynamic_lambda(
         history["lambda"].append(float(lam))
         history["step_norm"].append(float(step_norm))
         history["time"].append(float(elapsed))
-        history["yp"].append(yp*scale)
         with open('history.json', 'w') as history_file:
             json_history = {    
                 "alpha": [arr.tolist() for arr in history["alpha"]],
@@ -221,15 +219,15 @@ def gauss_newton_dynamic_lambda(
                 "true_alpha": history["true_alpha"].tolist(),
                 "true_mu": history["true_mu"],
                 "true_y": history["true_y"].tolist(),
-                "yp": [arr.tolist() for arr in history["yp"]]
             }
-            json.dump(json_history, history_file)
+            json.dump(json_history, history_file, indent=4)
 
         # Annealing logic every 3 iterations
         if anneal_lambda and (it + 1) % 3 == 0:
             lam = max(cumulative_resd / (it + 1), min_lambda)
 
     return b, history
+
 
 def load_history(filename='history.json'):
     """
@@ -255,7 +253,6 @@ def load_history(filename='history.json'):
     history['mu'] = np.array(history['mu'])
     history['true_alpha'] = np.array(history['true_alpha'])
     history['true_y'] = np.array(history['true_y'])
-    history['yp'] = [np.array(yp) for yp in history['yp']]
     return history
 
 
@@ -269,7 +266,8 @@ def head_metrics(true_heads, predicted_heads):
     print(f"RMSE: {rmse} m")
     print(f"MSE: {mse} m^2") 
     print(f"L2 relative error: {l2_relative_error}")
-    return mae, rmse, mse, l2_relative_error
+    return mae, rmse, mse, l2_relative_error 
+
 
 def conductivity_metrics(true_field, predicted_field, accuracy_threshold=0.1):
 
@@ -330,7 +328,7 @@ def perform_pca(Nx, Ny, NR=400, cov_type='gaussian', variance=1.0, lx=0.15, ly=0
     beta = np.mean(ucr)
     
     # Perform SVD
-    U, S, Vt = svd(ucr - beta, full_matrices=False)
+    U, S, Vt = svd(ucr - mu, full_matrices=False)
     
     # Generate pseudo-eigenvectors
     V = np.expand_dims(np.sqrt(S[:k]), axis=1) * Vt[:k]
@@ -485,7 +483,7 @@ if __name__ == "__main__":
     )
     
     # Prepare physical domain and well configuration
-    well_nodes, Q, dx, dy = prepare_physical_domain(nx, ny, Lox=320, Loy=320, q_original=-0.02)
+    well_nodes, Q, dx, dy = prepare_physical_domain(nx, ny, Lox=320, Loy=320, q_original= -0.02 * (64/nx)**2)
     
     # Solve hydraulic tomography
     t0 = time.time()
@@ -529,11 +527,6 @@ if __name__ == "__main__":
     # Load the optimization history
     history = load_history()
 
-    # Extract the true and predicted heads
-    true_heads = history['true_y']
-    predicted_heads = history['yp'][-1]
-    mae, rmse, mse, l2_relative_error = head_metrics(true_heads, predicted_heads)
-
     # Extract the true and predicted alpha
     predicted_alpha = history['alpha'][-1]
     predicted_mu = history['mu'][-1]
@@ -552,17 +545,8 @@ if __name__ == "__main__":
     # Plot the solution
     plot_conductivity_fields(reconstructed_field, true_field, nx, ny)
 
-    # # Plot the parameter history
-    # plot_parameter_history(history, V, beta)
-
-    # # Plot the optimization history
-    # plot_history(history)
-
     # Plot the parameters comparison
     plot_parameters(true_alpha, predicted_alpha)
-
-    # Plot the heads comparison
-    plot_observations_vs_predictions(true_heads, predicted_heads)
 
     # compute the head fields
     true_head_field = hydraulic_tomography(np.exp(true_field), well_nodes, Q)
@@ -575,3 +559,10 @@ if __name__ == "__main__":
     # compute the head metrics
     mae, rmse, mse, l2_relative_error = head_metrics(true_head_field[pump_id], predicted_head_field[pump_id])
 
+    # Extract the true and predicted heads
+    true_heads = history['true_y']
+    predicted_heads = observation_operator(predicted_head_field, well_nodes)
+    mae, rmse, mse, l2_relative_error = head_metrics(true_heads, predicted_heads)
+
+    # Plot the heads comparison
+    plot_observations_vs_predictions(true_heads, predicted_heads)

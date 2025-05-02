@@ -128,14 +128,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you use this software in your research, please cite:
 
 ```bibtex
-@software{gwsolver2024,
-  author = {Quan Guo},
-  title = {GWSolver: A Python package for groundwater flow simulation and hydraulic tomography},
-  year = {2024},
-  publisher = {GitHub},
-  url = {https://github.com/QuanGuo/GWSolver}
+@article{zhao2020reformulation,
+  author = {Zhao, Yue and Luo, Jian},
+  title = {Reformulation of Bayesian Geostatistical Approach on Principal Components},
+  journal = {Water Resources Research},
+  volume = {56},
+  number = {4},
+  pages = {e2019WR026732},
+  year = {2020},
+  doi = {https://doi.org/10.1029/2019WR026732},
+  url = {https://doi.org/10.1029/2019WR026732},
+  keywords = {geostatistical approach, inverse modeling, principal component}
 }
 ```
+
+Or in APA format:
+
+Zhao, Y., & Luo, J. (2020). Reformulation of Bayesian Geostatistical Approach on Principal Components. *Water Resources Research*, *56*(4), e2019WR026732. https://doi.org/10.1029/2019WR026732
 
 ## Contributing
 

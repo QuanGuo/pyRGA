@@ -9,16 +9,14 @@ import json
 from scipy.linalg import svd
 import os
 from scipy.special import gamma
-# Set working directory to script location
-script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
 
 # Create figures directory if it doesn't exist
-if not os.path.exists('figs'):
-    os.makedirs('figs')
+figs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'figs')
+if not os.path.exists(figs_dir):
+    os.makedirs(figs_dir)
 
-from hydraulic_tomography import hydraulic_tomography
-from utils import plot_conductivity_fields, plot_parameters, plot_observations_vs_predictions, plot_head_fields, plot_history, plot_parameter_history
+from .hydraulic_tomography import hydraulic_tomography
+from .utils import plot_conductivity_fields, plot_parameters, plot_observations_vs_predictions, plot_head_fields, plot_history, plot_parameter_history
 import matplotlib.pyplot as plt
 
 def generate_random_field(n_reals=1, Nx=256, Ny=256,

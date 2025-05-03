@@ -4,16 +4,16 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="pyrga",
-    version="0.1.0",
+    name="pyrga-ht",
+    version="0.1.4",
     author="Quan Guo",
     author_email="qguo48@hotmail.com",
     description="A Python package for groundwater flow simulation and hydraulic tomography using the Reformulated Geostatistical Approach (RGA)",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/QuanGuo/pyRGA",
-    packages=find_packages(where="src"),
     package_dir={"": "src"},
+    packages=find_packages(where="src"),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
@@ -21,7 +21,7 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
-        "Topic :: Scientific/Engineering :: Hydrogeology",
+        "Topic :: Scientific/Engineering :: Mathematics",
     ],
     python_requires=">=3.10",
     install_requires=[
@@ -29,11 +29,6 @@ setup(
         "scipy>=1.8",
         "matplotlib>=3.5",
         "pyamg>=4.2",
-        "mat73",
-        "joblib",
-        "scipy",
-        "matplotlib",
-        "pyamg",
         "mat73",
         "joblib"
     ]

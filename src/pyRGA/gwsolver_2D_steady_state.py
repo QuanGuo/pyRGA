@@ -12,8 +12,7 @@ from scipy.sparse.linalg import cg
 from sympy import symbols, diff, integrate
 import mat73
 import os
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-from utils import plot_comparison_and_compute_errors
+from .utils import plot_comparison_and_compute_errors
 
 
 # element stiffness
@@ -185,6 +184,10 @@ def test_solver_accuracy(mat_filename, plot_flag=False):
     """
     Test the solver accuracy by comparing the results with a reference solution.
     """
+    # Convert relative path to absolute path
+    if not os.path.isabs(mat_filename):
+        mat_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), mat_filename)
+        
     mat_data = mat73.loadmat(mat_filename)
     head = mat_data['head']
     logK = mat_data['logK']

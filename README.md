@@ -1,4 +1,4 @@
-# GWSolver
+# pyRGA
 
 A Python package for groundwater flow simulation and hydraulic tomography using the Reformulated Geostatistical Approach (RGA).
 
@@ -13,7 +13,7 @@ A Python package for groundwater flow simulation and hydraulic tomography using 
 ## Installation
 
 ```bash
-pip install gwsolver
+pip install pyrga-ht
 ```
 
 ## Quick Start
@@ -22,8 +22,8 @@ pip install gwsolver
 
 ```python
 import numpy as np
-from gwsolver import hydraulic_tomography
-from gwsolver.RGA import prepare_physical_domain
+from pyrga import hydraulic_tomography
+from pyrga.RGA import prepare_physical_domain
 
 # Define domain parameters
 nx, ny = 64, 64
@@ -41,8 +41,8 @@ heads = hydraulic_tomography(K, well_nodes, Q)
 ```python
 import numpy as np
 import time
-from gwsolver import hydraulic_tomography
-from gwsolver.RGA import (
+from pyrga import hydraulic_tomography
+from pyrga.RGA import (
     generate_synthetic_field,
     prepare_physical_domain,
     observation_operator,
@@ -117,7 +117,7 @@ b, opt_history = gauss_newton_dynamic_lambda(
 
 ## Documentation
 
-For detailed documentation, please visit [Read the Docs](https://gwsolver.readthedocs.io/).
+For detailed documentation, please visit [Read the Docs](https://pyrga.readthedocs.io/).
 
 ## License
 

@@ -1,7 +1,7 @@
-Welcome to GWSolver's documentation!
+Welcome to pyRGA's documentation!
 ================================
 
-GWSolver is a Python package for groundwater flow simulation and hydraulic tomography using the Reformulated Geostatistical Approach (RGA).
+pyRGA is a Python package for groundwater flow simulation and hydraulic tomography using the Reformulated Geostatistical Approach (RGA).
 
 .. toctree::
    :maxdepth: 2

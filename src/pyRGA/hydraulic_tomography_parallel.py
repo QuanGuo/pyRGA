@@ -3,7 +3,7 @@ from joblib import Parallel, delayed
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from scipy.sparse.linalg import cg
-from gwsolver_2D_steady_state import groundwater_solver
+from .gwsolver_2D_steady_state import groundwater_solver
 import time
 import matplotlib.pyplot as plt
 

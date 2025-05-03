@@ -13,7 +13,7 @@ A Python package for groundwater flow simulation and hydraulic tomography using 
 ## Installation
 
 ```bash
-pip install pyrga
+pip install pyrga-ht
 ```
 
 ## Quick Start

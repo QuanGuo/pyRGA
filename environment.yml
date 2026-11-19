@@ -15,3 +15,5 @@ dependencies:
   - pip:
     - mat73
     - joblib
+    - pydantic>=2.7
+    - mcp>=1.20

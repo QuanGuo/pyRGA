@@ -119,6 +119,50 @@ b, opt_history = gauss_newton_dynamic_lambda(
 
 For detailed documentation, please visit [Read the Docs](https://pyrga.readthedocs.io/).
 
+## Agent and portal workflow (development)
+
+Version `0.2` introduces a canonical, validated dataset shared by Python,
+MCP tools, and the research portal. The first vertical slice supports CSV or
+JSON input, steady-state forward simulation, and HTML/SVG result reports.
+This slice requires SI units (length and head in `m`, conductivity in `m/s`,
+and pumping rate in `m^3/s`), equal grid counts in x and y, and square physical
+cells. The two-dimensional forward model assumes a one-metre aquifer thickness.
+Unsupported units and grid geometry are rejected rather than converted.
+
+```python
+from pyrga.models import DarcyDataset, GridSpec, Well
+from pyrga.workflows import run_forward
+from pyrga.rendering import write_forward_report
+
+dataset = DarcyDataset(
+    name="Small aquifer",
+    grid=GridSpec(nx=2, ny=2, length_x=20, length_y=20),
+    conductivity=[1e-4] * 4,
+    wells=[Well(id="PW-1", node=4, pumping_rate=-0.001)],
+)
+
+result = run_forward(dataset)
+write_forward_report(result, "output/small-aquifer")
+```
+
+Install and launch the MCP server with:
+
+```bash
+pip install -e '.[mcp]'
+pyrga-mcp
+```
+
+It exposes these initial tools:
+
+- `validate_dataset`
+- `run_forward_model`
+- `render_forward_result`
+
+The portal source is maintained in the separate `prRGA-portal` repository
+(a sibling directory at `../prRGA-portal/`). Its dataset workspace performs an immediate
+browser-side structure check before inputs are sent for authoritative MCP
+validation and numerical execution.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

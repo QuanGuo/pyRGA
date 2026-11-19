@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyrga-ht"
+version = "0.2.0.dev0"
+description = "Groundwater flow simulation and hydraulic tomography using RGA"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Quan Guo", email = "qguo48@hotmail.com" }]
+dependencies = [
+  "numpy>=1.21",
+  "scipy>=1.8",
+  "pyamg>=4.2",
+  "sympy>=1.10",
+  "mat73",
+  "joblib",
+  "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.5", "imageio>=2.0", "ipython>=8.0"]
+test = ["pytest>=7.0"]
+mcp = ["mcp>=1.20"]
+
+[project.scripts]
+pyrga-mcp = "pyrga.mcp_server:main"
+
+[tool.setuptools]
+packages = ["pyrga"]
+package-dir = { pyrga = "src/pyRGA" }

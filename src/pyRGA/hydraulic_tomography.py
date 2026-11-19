@@ -5,16 +5,13 @@ This module implements hydraulic tomography methods for groundwater flow analysi
 
 import numpy as np
 import scipy.sparse as sp
-import matplotlib.pyplot as plt
-import pyamg
 from scipy.sparse.linalg import cg
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from math import ceil
-import time
-import imageio
-from IPython.display import Image, display
-from gwsolver import apply_dirichlet_conditions, assemble_matrix, assemble_transient_matrix
-from utils import plot_transient_hydraulic_heads_at_timestep, DEFAULT_FIG_DIR
+from .gwsolver import (
+    apply_dirichlet_conditions,
+    assemble_matrix,
+    assemble_transient_matrix,
+    build_preconditioner,
+)
 
 
 def hydraulic_tomography(K, well_locs, Q):
@@ -58,14 +55,14 @@ def hydraulic_tomography(K, well_locs, Q):
 
     bigk_reduced = bigk[mask, :][:, mask]
     
-    ml = pyamg.ruge_stuben_solver(bigk_reduced)
+    preconditioner = build_preconditioner(bigk_reduced)
     
     HT_heads = np.empty((len(well_locs), numnod), dtype=np.float64)
 
     for i, well_loc in enumerate(well_locs):
         force[well_loc] = Q
         force_reduced = force[mask]
-        HT_heads[i,mask], _ = cg(bigk_reduced, force_reduced, M=ml.aspreconditioner())
+        HT_heads[i,mask], _ = cg(bigk_reduced, force_reduced, M=preconditioner)
         force[well_loc] = 0.0  # Reset force for next iteration
         
     HT_heads[:, dirichlet_nodes] = dirichlet_values
@@ -117,7 +114,7 @@ def ht_transient(K, well_locs, Q, dt, t_max, initial_head=None):
     force = apply_dirichlet_conditions(bigk_transient, force, dirichlet_nodes, dirichlet_values)
 
     # Solve the system
-    ml = pyamg.ruge_stuben_solver(bigk_reduced)
+    preconditioner = build_preconditioner(bigk_reduced)
 
     HT_transient_heads = np.empty((len(well_locs), num_timesteps, numnod), dtype=np.float64)
 
@@ -130,13 +127,21 @@ def ht_transient(K, well_locs, Q, dt, t_max, initial_head=None):
         force_reduced = force[mask]
         for step in range(1, num_timesteps):
             rhs = (Ss / dt) * HT_transient_heads[i, step - 1, mask] + force_reduced
-            HT_transient_heads[i, step, mask], _ = sp.linalg.cg(bigk_reduced, rhs, M=ml.aspreconditioner())
+            HT_transient_heads[i, step, mask], _ = sp.linalg.cg(
+                bigk_reduced, rhs, M=preconditioner
+            )
             HT_transient_heads[i, step, dirichlet_nodes] = dirichlet_values
         force[well_loc] = 0.0
 
     return HT_transient_heads
 
 if __name__ == "__main__":
+
+    import time
+    import imageio.v2 as imageio
+    import matplotlib.pyplot as plt
+    from IPython.display import Image, display
+    from .utils import plot_transient_hydraulic_heads_at_timestep, DEFAULT_FIG_DIR
 
     # Define domain parameters
     nx, ny = 1024, 1024

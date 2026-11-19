@@ -2,10 +2,7 @@
 from joblib import Parallel, delayed
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
-from scipy.sparse.linalg import cg
-from gwsolver import groundwater_solver
-import time
-import matplotlib.pyplot as plt
+from .gwsolver import groundwater_solver
 
 # Function to compute groundwater solution
 def compute_head(well_loc, K, Q):

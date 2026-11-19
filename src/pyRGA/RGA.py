@@ -8,9 +8,7 @@ import time
 import json
 from scipy.linalg import svd
 from scipy.special import gamma
-from hydraulic_tomography import hydraulic_tomography, ht_transient
-from utils import plot_conductivity_fields, plot_parameters, plot_observations_vs_predictions, plot_head_fields, plot_history, plot_parameter_history
-import matplotlib.pyplot as plt
+from .hydraulic_tomography import hydraulic_tomography, ht_transient
 
 def generate_random_field(n_reals=1, Nx=256, Ny=256,
                          cov_type='gaussian', mu=0, variance=1.0,
@@ -82,7 +80,7 @@ def observation_operator(hydraulic_heads, well_nodes):
         obs[i] = hydraulic_heads[i, well_nodes[:i]+well_nodes[i+1:]].flatten()
     return obs.flatten()
 
-def transient_observation_operator(HT_transient_heads, well_nodes, pump_id_list=[], timesteps=[]):
+def transient_observation_operator(HT_transient_heads, well_nodes, pump_id_list=None, timesteps=None):
     """
     Create observation operator for transient hydraulic tomography.
     
@@ -93,6 +91,8 @@ def transient_observation_operator(HT_transient_heads, well_nodes, pump_id_list=
     Returns:
         ndarray: Flattened vector of head differences between well pairs
     """
+    timesteps = [] if timesteps is None else timesteps
+    pump_id_list = [] if pump_id_list is None else pump_id_list
     if len(timesteps) == 0:
         timesteps = np.arange(HT_transient_heads.shape[1])
     if len(pump_id_list) == 0:
@@ -149,7 +149,7 @@ def gauss_newton_dynamic_lambda(
     lam_init=1e-3,
     max_iter=10,
     tol=1e-6,
-    history={},
+    history=None,
     adaptive_lambda=True,
     anneal_lambda=True,
     min_lambda=1e-5,
@@ -173,6 +173,11 @@ def gauss_newton_dynamic_lambda(
     Returns:
         tuple: (optimized parameters, optimization history)
     """
+    if history is None:
+        history = {
+            "alpha": [], "mu": [], "loss": [], "lambda": [],
+            "step_norm": [], "time": [], "yp": [],
+        }
     b = b0.copy()
     lam = lam_init
 
@@ -491,6 +496,12 @@ def add_noise(y0, noise_level=0.05, rng=None):
     return y, obv_error
 
 if __name__ == "__main__":
+    from .utils import (
+        plot_conductivity_fields,
+        plot_head_fields,
+        plot_observations_vs_predictions,
+        plot_parameters,
+    )
     # numerical domain/mesh: regular grid
     nx = 64
     ny = 64

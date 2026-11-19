@@ -5,11 +5,17 @@ This module implements finite element methods to solve steady-state & transient 
 
 import numpy as np
 import scipy.sparse as sp
-import time
-import matplotlib.pyplot as plt
-import pyamg
 from scipy.sparse.linalg import cg
 from sympy import symbols, diff, integrate
+
+
+def build_preconditioner(matrix):
+    """Build an AMG preconditioner, or return ``None`` when pyamg is absent."""
+    try:
+        import pyamg
+    except ImportError:
+        return None
+    return pyamg.ruge_stuben_solver(matrix).aspreconditioner()
 
 
 # element stiffness
@@ -142,8 +148,9 @@ def groundwater_solver(K, well_node, Q):
     bigk_reduced = bigk[mask, :][:, mask]
     force_reduced = force[mask]
 
-    ml = pyamg.ruge_stuben_solver(bigk_reduced)
-    solution_full[mask], _ = cg(bigk_reduced, force_reduced, M=ml.aspreconditioner())
+    solution_full[mask], _ = cg(
+        bigk_reduced, force_reduced, M=build_preconditioner(bigk_reduced)
+    )
 
     return solution_full
 
@@ -274,7 +281,7 @@ def transient_groundwater_solver(K, well_node, Q, initial_head, dt, t_max):
     force_reduced = force[mask]
 
     # Solve the system
-    ml = pyamg.ruge_stuben_solver(bigk_reduced)
+    preconditioner = build_preconditioner(bigk_reduced)
     
     head_over_time = np.empty((num_timesteps, numnod), dtype=np.float64)
     
@@ -286,7 +293,7 @@ def transient_groundwater_solver(K, well_node, Q, initial_head, dt, t_max):
         # Update right-hand side: mass_matrix @ head + Q
         rhs = (Ss / dt) * head + force_reduced
 
-        head, _ = sp.linalg.cg(bigk_reduced, rhs, M=ml.aspreconditioner())
+        head, _ = sp.linalg.cg(bigk_reduced, rhs, M=preconditioner)
 
         # Store the result for this timestep
         head_over_time[step, mask] = head       
@@ -344,10 +351,10 @@ def groundwater_solver_one_step(K, well_node, Q, head_i, dt):
     bigk_reduced = bigk_transient[mask, :][:, mask]
     force_reduced = force[mask]
 
-    ml = pyamg.ruge_stuben_solver(bigk_reduced)
+    preconditioner = build_preconditioner(bigk_reduced)
     head = head_i.copy()[mask]
     rhs = (Ss / dt) * head + force_reduced
-    head_new, _ = sp.linalg.cg(bigk_reduced, rhs, M=ml.aspreconditioner())
+    head_new, _ = sp.linalg.cg(bigk_reduced, rhs, M=preconditioner)
 
     head_full = np.zeros(numnod)
     head_full[mask] = head_new

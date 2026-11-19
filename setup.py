@@ -36,8 +36,11 @@ setup(
     ],
     extras_require={
         "plot": ["matplotlib>=3.5", "imageio>=2.0", "ipython>=8.0"],
-        "test": ["pytest>=7.0"],
+        "test": ["pytest>=7.0", "httpx>=0.27"],
         "mcp": ["mcp>=1.20"],
+        "web": ["fastapi>=0.115", "uvicorn>=0.30"],
     },
-    entry_points={"console_scripts": ["pyrga-mcp=pyrga.mcp_server:main"]},
+    entry_points={"console_scripts": [
+        "pyrga-mcp=pyrga.mcp_server:main", "pyrga-api=pyrga.web_server:main"
+    ]},
 )

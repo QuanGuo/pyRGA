@@ -15,6 +15,12 @@ from .RGA import (
 )
 from .models import DarcyDataset, ForwardResult, GridSpec, HeadObservation, Provenance, Well
 from .workflows import run_forward
+from .experiments import generate_field, run_pumping_test
+from .inverse import run_inverse
+from .experiment_models import (
+    ExperimentExport, GenerateFieldRequest, GeneratedField, InstalledWell,
+    PumpingTestRequest, PumpingTestResult, InverseRequest, InverseResult,
+)
 
 __all__ = [
     "add_noise", "forward_model", "gauss_newton_dynamic_lambda",
@@ -23,6 +29,9 @@ __all__ = [
     "prepare_physical_domain", "transient_groundwater_solver",
     "DarcyDataset", "ForwardResult", "GridSpec", "HeadObservation",
     "Provenance", "Well", "run_forward",
+    "generate_field", "run_pumping_test", "run_inverse", "ExperimentExport",
+    "GenerateFieldRequest", "GeneratedField", "InstalledWell",
+    "PumpingTestRequest", "PumpingTestResult", "InverseRequest", "InverseResult",
 ]
 
 __version__ = "0.2.0.dev0"

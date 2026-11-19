@@ -12,7 +12,7 @@ from .hydraulic_tomography import hydraulic_tomography, ht_transient
 
 def generate_random_field(n_reals=1, Nx=256, Ny=256,
                          cov_type='gaussian', mu=0, variance=1.0,
-                         lx=0.1, ly=0.2, nu=0.5):
+                         lx=0.1, ly=0.2, nu=0.5, rng=None):
     """
     Generate 2D Gaussian random fields with specified covariance structure using spectral method
 
@@ -24,6 +24,7 @@ def generate_random_field(n_reals=1, Nx=256, Ny=256,
     variance : Field variance
     lx, ly   : Correlation lengths in x/y directions
     nu       : Smoothness parameter for Matérn covariance
+        rng      : Optional numpy Generator; omitted preserves legacy RNG behavior
 
     Returns:
     field    : Random field(s) with shape (n_reals, Nx, Ny) or (Nx, Ny) if n_reals=1
@@ -55,7 +56,8 @@ def generate_random_field(n_reals=1, Nx=256, Ny=256,
     S *= (variance * Nx * Ny) / current_power
 
     # Generate white noise
-    white_noise = np.random.normal(0, 1, (n_reals, Nx, Ny))
+    random = np.random if rng is None else rng
+    white_noise = random.normal(0, 1, (n_reals, Nx, Ny))
 
     # Spectral domain transformation
     fft_noise = np.fft.fft2(white_noise, axes=(-2, -1))
@@ -314,7 +316,7 @@ def conductivity_metrics(true_field, predicted_field, accuracy_threshold=0.1):
     print(f"Accuracy: {accuracy}")
     return l2_relative_error, accuracy
 
-def perform_pca(Nx, Ny, NR=400, cov_type='gaussian', variance=1.0, lx=0.15, ly=0.2, mu=-4, k=50):
+def perform_pca(Nx, Ny, NR=400, cov_type='gaussian', variance=1.0, lx=0.15, ly=0.2, mu=-4, k=50, rng=None):
     """
     Perform Principal Component Analysis (PCA) on random fields to reduce parameter dimension.
     
@@ -357,7 +359,8 @@ def perform_pca(Nx, Ny, NR=400, cov_type='gaussian', variance=1.0, lx=0.15, ly=0
         variance=variance,
         lx=lx,
         ly=ly,
-        mu=mu
+        mu=mu,
+        rng=rng,
     ).reshape(NR, -1)
     
     # Calculate mean
@@ -371,7 +374,7 @@ def perform_pca(Nx, Ny, NR=400, cov_type='gaussian', variance=1.0, lx=0.15, ly=0
     
     return V, beta
 
-def generate_synthetic_field(Nx, Ny, k=50, mu=-4, **pca_kwargs):
+def generate_synthetic_field(Nx, Ny, k=50, mu=-4, rng=None, **pca_kwargs):
     """
     Generate a synthetic conductivity field using PCA.
     
@@ -402,10 +405,10 @@ def generate_synthetic_field(Nx, Ny, k=50, mu=-4, **pca_kwargs):
             Estimated mean of the random field
     """
     # Perform PCA
-    V, beta = perform_pca(Nx, Ny, k=k, mu=mu, **pca_kwargs)
+    V, beta = perform_pca(Nx, Ny, k=k, mu=mu, rng=rng, **pca_kwargs)
     
     # Generate random coefficients
-    alpha = np.random.randn(k)
+    alpha = np.random.randn(k) if rng is None else rng.normal(size=k)
     
     # Generate synthetic random field
     logK = mu + (V.T @ alpha[:, np.newaxis]).flatten()

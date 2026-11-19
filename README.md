@@ -285,24 +285,104 @@ then pass `dataset.model_dump(mode="json")` as `payload`.
 
 ### Inverse optimization and MCP
 
-The current MCP server does **not** expose an inverse-optimization tool or a
-transient-solver tool. `run_forward_model` runs only the steady-state forward
-workflow; adding observations to its payload does not invoke optimization.
+The experiment tools support seeded truth generation, explicit pumping-test
+measurements, and truth-free inverse optimization:
 
-To run inverse optimization now, use the **Complete Optimization Example**
-above through Python. It builds the PCA basis, generates head observations,
-and passes a forward-model callable to `gauss_newton_dynamic_lambda`, returning
-the fitted parameters and iteration history. For measured data, prepare the
-observation vector in the documented well-pair order and supply the required
-history fields; the current optimizer's history format is oriented toward
-synthetic experiments.
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `experiment_schema` | None | Shared JSON Schema bundle |
+| `generate_field` | `payload`: `GenerateFieldRequest` | `GeneratedField` |
+| `run_pumping_test` | `payload`: `PumpingTestRequest` | Immutable `PumpingTestResult` with seeded noise |
+| `prepare_inverse_request` | `experiment`: `ExperimentExport` | `InverseRequest` for the selected runs, excluding truth and clean heads |
+| `run_inverse_model` | `payload`: `InverseRequest` | Estimated conductivity, predictions, objective history and convergence status |
 
-An agent with both this MCP server and Python execution can coordinate the two
-interfaces: validate a dataset with MCP, run the inverse script through Python,
-then put the estimated conductivity into a canonical dataset and call
-`run_forward_model` and `render_forward_result` for a forward check. An
-MCP-only client can use the three tools listed above but cannot run the inverse
-optimizer until a dedicated tool is implemented.
+These tools execute directly. For longer computations, use
+`submit_experiment_job(kind, payload)` instead, where `kind` is
+`generate_field`, `run_pumping_test`, or `run_inverse_model`. Poll with
+`get_experiment_job(job_id)`, retrieve a successful result with
+`get_experiment_job_result(job_id)`, and cancel queued or running work with
+`cancel_experiment_job(job_id)`. Each MCP server process owns its own job queue;
+HTTP job IDs and MCP job IDs are not interchangeable.
+
+The inverse workflow builds its PCA basis independently from truth, permits a
+different structural prior, and minimizes uncertainty-weighted head residuals
+plus a prior penalty on PCA coefficients. The mean log-conductivity is fitted
+without that penalty. Truth is available for comparison, not to the optimizer.
+The earlier complete optimization example remains the legacy Python interface.
+Transient simulation is still available through Python only.
+
+See the [experiment API contract](docs/experiment-api.md) for full payloads,
+defaults, noise conventions, progress, cancellation, and export/import rules.
+
+## Local portal backend
+
+Install and start the HTTP service from this repository:
+
+```bash
+python -m pip install -e '.[web,mcp]'
+pyrga-api
+```
+
+It listens at `http://127.0.0.1:8000`. Open `/docs` for the interactive API,
+`/openapi.json` for HTTP schemas, or `/api/v1/schema` for the shared experiment
+models. Use `pyrga-api --port 8001` to select another port. The optional `web`
+extra is not required for ordinary Python or MCP use.
+
+Submit jobs to `POST /api/v1/jobs`, poll `GET /api/v1/jobs/{job_id}`, retrieve
+`GET /api/v1/jobs/{job_id}/result`, or cancel with `DELETE /api/v1/jobs/{job_id}`.
+The local service runs one isolated compute process at a time and stores jobs
+in memory; export experiments before restarting it. It is a local, single-process
+development service, not a hosted multi-user deployment.
+
+The frontend can build against the [checked-in schema bundle](docs/experiment-api.schema.json)
+without starting Python. Regenerate it with:
+
+```bash
+python -m pyrga.api_contract > docs/experiment-api.schema.json
+```
+
+Python callers use the same workflows directly:
+
+```python
+from pyrga import (
+    ExperimentExport, GenerateFieldRequest, InstalledWell,
+    PumpingTestRequest, generate_field, run_pumping_test, run_inverse,
+)
+
+field = generate_field(GenerateFieldRequest(seed=42))
+wells = [InstalledWell(id="PW-1", node=544),
+         InstalledWell(id="MW-1", node=272),
+         InstalledWell(id="MW-2", node=816)]  # Default 32 x 32 grid
+test = run_pumping_test(PumpingTestRequest(
+    field=field, wells=wells, pump_well_id="PW-1", test_id="test-1",
+))
+experiment = ExperimentExport(
+    name="Seeded aquifer", field=field, wells=wells,
+    tests=[test], selected_test_ids=[test.test_id],
+    inverse_prior=field.request.structure,
+)
+estimate = run_inverse(experiment.inverse_request())
+saved = ExperimentExport.model_validate({
+    **experiment.model_dump(), "inverse_result": estimate.model_dump(),
+})
+export_json = saved.model_dump_json(indent=2)
+reloaded = ExperimentExport.model_validate_json(export_json)
+```
+
+Generation defaults to a 32 x 32 grid over 320 x 320 m. Correlation lengths
+are in metres; variance is for natural-log conductivity. Each pumping test
+uses one pump, selected monitors, a recorded noise seed, and independent
+Gaussian errors with standard deviation
+`sqrt((relative * abs(clean_head))**2 + absolute_floor**2)`.
+Defaults are 5% relative noise and a `0.001 m` absolute floor. Set both to zero
+for noiseless measurements. Repeating a test with a new `test_id` preserves
+its own measurements; change the noise seed to obtain a new noise realization.
+
+An `ExperimentExport` includes materialized truth, seeds, well snapshots, all
+collected tests, selected test IDs, inverse settings, and an optional inverse
+result. Export it as JSON in the frontend, or write `export_json` to a file in
+Python. Import validates field identity, references, and stale results. Existing
+test snapshots survive later edits to the current installed-well list.
 
 ## Frontend repository
 

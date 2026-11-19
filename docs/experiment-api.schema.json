@@ -1,0 +1,2269 @@
+{
+  "job_kinds": {
+    "generate_field": {
+      "request": "GenerateFieldRequest",
+      "result": "GeneratedField"
+    },
+    "run_inverse_model": {
+      "request": "InverseRequest",
+      "result": "InverseResult"
+    },
+    "run_pumping_test": {
+      "request": "PumpingTestRequest",
+      "result": "PumpingTestResult"
+    }
+  },
+  "schema_version": "1.0",
+  "schemas": {
+    "ExperimentExport": {
+      "$defs": {
+        "GenerateFieldRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "grid": {
+              "$ref": "#/$defs/GridSpec"
+            },
+            "seed": {
+              "default": 42,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "structure": {
+              "$ref": "#/$defs/StructureParameters"
+            }
+          },
+          "title": "GenerateFieldRequest",
+          "type": "object"
+        },
+        "GeneratedField": {
+          "additionalProperties": false,
+          "properties": {
+            "conductivity": {
+              "items": {
+                "type": "number"
+              },
+              "title": "Conductivity",
+              "type": "array"
+            },
+            "field_id": {
+              "minLength": 1,
+              "title": "Field Id",
+              "type": "string"
+            },
+            "request": {
+              "$ref": "#/$defs/GenerateFieldRequest"
+            },
+            "solver_version": {
+              "title": "Solver Version",
+              "type": "string"
+            }
+          },
+          "required": [
+            "field_id",
+            "request",
+            "conductivity",
+            "solver_version"
+          ],
+          "title": "GeneratedField",
+          "type": "object"
+        },
+        "GridSpec": {
+          "additionalProperties": false,
+          "description": "A regular two-dimensional finite-element grid.",
+          "properties": {
+            "crs": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Crs"
+            },
+            "length_unit": {
+              "const": "m",
+              "default": "m",
+              "title": "Length Unit",
+              "type": "string"
+            },
+            "length_x": {
+              "description": "Domain length in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Length X",
+              "type": "number"
+            },
+            "length_y": {
+              "description": "Domain length in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Length Y",
+              "type": "number"
+            },
+            "nx": {
+              "description": "Number of elements in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Nx",
+              "type": "integer"
+            },
+            "ny": {
+              "description": "Number of elements in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Ny",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "nx",
+            "ny",
+            "length_x",
+            "length_y"
+          ],
+          "title": "GridSpec",
+          "type": "object"
+        },
+        "InstalledWell": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Id",
+              "type": "string"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "node"
+          ],
+          "title": "InstalledWell",
+          "type": "object"
+        },
+        "InverseIteration": {
+          "additionalProperties": false,
+          "properties": {
+            "accepted": {
+              "title": "Accepted",
+              "type": "boolean"
+            },
+            "damping": {
+              "title": "Damping",
+              "type": "number"
+            },
+            "data_misfit": {
+              "title": "Data Misfit",
+              "type": "number"
+            },
+            "iteration": {
+              "title": "Iteration",
+              "type": "integer"
+            },
+            "objective": {
+              "title": "Objective",
+              "type": "number"
+            },
+            "prior_penalty": {
+              "title": "Prior Penalty",
+              "type": "number"
+            },
+            "step_norm": {
+              "title": "Step Norm",
+              "type": "number"
+            }
+          },
+          "required": [
+            "iteration",
+            "objective",
+            "data_misfit",
+            "prior_penalty",
+            "step_norm",
+            "damping",
+            "accepted"
+          ],
+          "title": "InverseIteration",
+          "type": "object"
+        },
+        "InverseRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "grid": {
+              "$ref": "#/$defs/GridSpec"
+            },
+            "prior": {
+              "$ref": "#/$defs/StructureParameters"
+            },
+            "settings": {
+              "$ref": "#/$defs/InverseSettings"
+            },
+            "tests": {
+              "items": {
+                "$ref": "#/$defs/InverseTest"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "title": "Tests",
+              "type": "array"
+            }
+          },
+          "required": [
+            "grid",
+            "tests"
+          ],
+          "title": "InverseRequest",
+          "type": "object"
+        },
+        "InverseResult": {
+          "additionalProperties": false,
+          "properties": {
+            "coefficients": {
+              "items": {
+                "type": "number"
+              },
+              "title": "Coefficients",
+              "type": "array"
+            },
+            "converged": {
+              "title": "Converged",
+              "type": "boolean"
+            },
+            "estimated_conductivity": {
+              "items": {
+                "type": "number"
+              },
+              "title": "Estimated Conductivity",
+              "type": "array"
+            },
+            "final_objective": {
+              "title": "Final Objective",
+              "type": "number"
+            },
+            "initial_objective": {
+              "title": "Initial Objective",
+              "type": "number"
+            },
+            "iterations": {
+              "items": {
+                "$ref": "#/$defs/InverseIteration"
+              },
+              "title": "Iterations",
+              "type": "array"
+            },
+            "mean_log_conductivity": {
+              "title": "Mean Log Conductivity",
+              "type": "number"
+            },
+            "predictions": {
+              "items": {
+                "$ref": "#/$defs/PredictedMeasurement"
+              },
+              "title": "Predictions",
+              "type": "array"
+            },
+            "request": {
+              "$ref": "#/$defs/InverseRequest"
+            },
+            "solver_version": {
+              "title": "Solver Version",
+              "type": "string"
+            },
+            "termination_reason": {
+              "title": "Termination Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "request",
+            "estimated_conductivity",
+            "coefficients",
+            "mean_log_conductivity",
+            "initial_objective",
+            "final_objective",
+            "converged",
+            "termination_reason",
+            "iterations",
+            "predictions",
+            "solver_version"
+          ],
+          "title": "InverseResult",
+          "type": "object"
+        },
+        "InverseSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "components": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Components",
+              "type": "integer"
+            },
+            "ensemble_size": {
+              "default": 200,
+              "maximum": 400,
+              "minimum": 2,
+              "title": "Ensemble Size",
+              "type": "integer"
+            },
+            "initial_damping": {
+              "default": 0.001,
+              "exclusiveMinimum": 0,
+              "title": "Initial Damping",
+              "type": "number"
+            },
+            "max_iterations": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Max Iterations",
+              "type": "integer"
+            },
+            "regularization": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "title": "Regularization",
+              "type": "number"
+            },
+            "seed": {
+              "default": 43,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "tolerance": {
+              "default": 1e-05,
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "title": "Tolerance",
+              "type": "number"
+            }
+          },
+          "title": "InverseSettings",
+          "type": "object"
+        },
+        "InverseTest": {
+          "additionalProperties": false,
+          "properties": {
+            "observations": {
+              "items": {
+                "$ref": "#/$defs/ObservedHead"
+              },
+              "maxItems": 24,
+              "minItems": 1,
+              "title": "Observations",
+              "type": "array"
+            },
+            "pump_node": {
+              "minimum": 0,
+              "title": "Pump Node",
+              "type": "integer"
+            },
+            "pumping_rate": {
+              "title": "Pumping Rate",
+              "type": "number"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "test_id",
+            "pump_node",
+            "pumping_rate",
+            "observations"
+          ],
+          "title": "InverseTest",
+          "type": "object"
+        },
+        "Measurement": {
+          "additionalProperties": false,
+          "properties": {
+            "clean_head": {
+              "title": "Clean Head",
+              "type": "number"
+            },
+            "head": {
+              "title": "Head",
+              "type": "number"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            },
+            "standard_deviation": {
+              "minimum": 0,
+              "title": "Standard Deviation",
+              "type": "number"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            },
+            "well_id": {
+              "title": "Well Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "test_id",
+            "well_id",
+            "node",
+            "clean_head",
+            "head",
+            "standard_deviation"
+          ],
+          "title": "Measurement",
+          "type": "object"
+        },
+        "NoiseSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "absolute_floor": {
+              "default": 0.001,
+              "minimum": 0,
+              "title": "Absolute Floor",
+              "type": "number"
+            },
+            "relative": {
+              "default": 0.05,
+              "maximum": 1,
+              "minimum": 0,
+              "title": "Relative",
+              "type": "number"
+            },
+            "seed": {
+              "default": 44,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            }
+          },
+          "title": "NoiseSettings",
+          "type": "object"
+        },
+        "ObservedHead": {
+          "additionalProperties": false,
+          "properties": {
+            "head": {
+              "title": "Head",
+              "type": "number"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            },
+            "standard_deviation": {
+              "minimum": 0,
+              "title": "Standard Deviation",
+              "type": "number"
+            },
+            "well_id": {
+              "title": "Well Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "well_id",
+            "node",
+            "head",
+            "standard_deviation"
+          ],
+          "title": "ObservedHead",
+          "type": "object"
+        },
+        "PredictedMeasurement": {
+          "additionalProperties": false,
+          "properties": {
+            "observed_head": {
+              "title": "Observed Head",
+              "type": "number"
+            },
+            "predicted_head": {
+              "title": "Predicted Head",
+              "type": "number"
+            },
+            "residual": {
+              "title": "Residual",
+              "type": "number"
+            },
+            "standard_deviation": {
+              "title": "Standard Deviation",
+              "type": "number"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            },
+            "well_id": {
+              "title": "Well Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "test_id",
+            "well_id",
+            "observed_head",
+            "predicted_head",
+            "standard_deviation",
+            "residual"
+          ],
+          "title": "PredictedMeasurement",
+          "type": "object"
+        },
+        "PumpingTestResult": {
+          "additionalProperties": false,
+          "properties": {
+            "field_id": {
+              "title": "Field Id",
+              "type": "string"
+            },
+            "grid": {
+              "$ref": "#/$defs/GridSpec"
+            },
+            "heads": {
+              "items": {
+                "type": "number"
+              },
+              "title": "Heads",
+              "type": "array"
+            },
+            "measurements": {
+              "items": {
+                "$ref": "#/$defs/Measurement"
+              },
+              "minItems": 1,
+              "title": "Measurements",
+              "type": "array"
+            },
+            "noise": {
+              "$ref": "#/$defs/NoiseSettings"
+            },
+            "pump_well_id": {
+              "title": "Pump Well Id",
+              "type": "string"
+            },
+            "pumping_rate": {
+              "title": "Pumping Rate",
+              "type": "number"
+            },
+            "solver_version": {
+              "title": "Solver Version",
+              "type": "string"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            },
+            "wells": {
+              "items": {
+                "$ref": "#/$defs/InstalledWell"
+              },
+              "title": "Wells",
+              "type": "array"
+            }
+          },
+          "required": [
+            "test_id",
+            "field_id",
+            "grid",
+            "wells",
+            "pump_well_id",
+            "pumping_rate",
+            "noise",
+            "heads",
+            "measurements",
+            "solver_version"
+          ],
+          "title": "PumpingTestResult",
+          "type": "object"
+        },
+        "StructureParameters": {
+          "additionalProperties": false,
+          "properties": {
+            "correlation_length_x": {
+              "default": 48,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length X",
+              "type": "number"
+            },
+            "correlation_length_y": {
+              "default": 64,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length Y",
+              "type": "number"
+            },
+            "covariance_type": {
+              "default": "gaussian",
+              "enum": [
+                "gaussian",
+                "exponential",
+                "matern"
+              ],
+              "title": "Covariance Type",
+              "type": "string"
+            },
+            "log_variance": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Log Variance",
+              "type": "number"
+            },
+            "matern_nu": {
+              "default": 0.5,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Matern Nu",
+              "type": "number"
+            },
+            "mean_log_conductivity": {
+              "default": -9.210340371976184,
+              "maximum": 10,
+              "minimum": -30,
+              "title": "Mean Log Conductivity",
+              "type": "number"
+            }
+          },
+          "title": "StructureParameters",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/GeneratedField"
+        },
+        "inverse_prior": {
+          "$ref": "#/$defs/StructureParameters"
+        },
+        "inverse_result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InverseResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "inverse_settings": {
+          "$ref": "#/$defs/InverseSettings"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "selected_test_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Test Ids",
+          "type": "array"
+        },
+        "tests": {
+          "items": {
+            "$ref": "#/$defs/PumpingTestResult"
+          },
+          "maxItems": 64,
+          "title": "Tests",
+          "type": "array"
+        },
+        "wells": {
+          "items": {
+            "$ref": "#/$defs/InstalledWell"
+          },
+          "maxItems": 25,
+          "title": "Wells",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "field"
+      ],
+      "title": "ExperimentExport",
+      "type": "object"
+    },
+    "GenerateFieldRequest": {
+      "$defs": {
+        "GridSpec": {
+          "additionalProperties": false,
+          "description": "A regular two-dimensional finite-element grid.",
+          "properties": {
+            "crs": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Crs"
+            },
+            "length_unit": {
+              "const": "m",
+              "default": "m",
+              "title": "Length Unit",
+              "type": "string"
+            },
+            "length_x": {
+              "description": "Domain length in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Length X",
+              "type": "number"
+            },
+            "length_y": {
+              "description": "Domain length in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Length Y",
+              "type": "number"
+            },
+            "nx": {
+              "description": "Number of elements in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Nx",
+              "type": "integer"
+            },
+            "ny": {
+              "description": "Number of elements in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Ny",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "nx",
+            "ny",
+            "length_x",
+            "length_y"
+          ],
+          "title": "GridSpec",
+          "type": "object"
+        },
+        "StructureParameters": {
+          "additionalProperties": false,
+          "properties": {
+            "correlation_length_x": {
+              "default": 48,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length X",
+              "type": "number"
+            },
+            "correlation_length_y": {
+              "default": 64,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length Y",
+              "type": "number"
+            },
+            "covariance_type": {
+              "default": "gaussian",
+              "enum": [
+                "gaussian",
+                "exponential",
+                "matern"
+              ],
+              "title": "Covariance Type",
+              "type": "string"
+            },
+            "log_variance": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Log Variance",
+              "type": "number"
+            },
+            "matern_nu": {
+              "default": 0.5,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Matern Nu",
+              "type": "number"
+            },
+            "mean_log_conductivity": {
+              "default": -9.210340371976184,
+              "maximum": 10,
+              "minimum": -30,
+              "title": "Mean Log Conductivity",
+              "type": "number"
+            }
+          },
+          "title": "StructureParameters",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "grid": {
+          "$ref": "#/$defs/GridSpec"
+        },
+        "seed": {
+          "default": 42,
+          "maximum": 4294967295,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "structure": {
+          "$ref": "#/$defs/StructureParameters"
+        }
+      },
+      "title": "GenerateFieldRequest",
+      "type": "object"
+    },
+    "GeneratedField": {
+      "$defs": {
+        "GenerateFieldRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "grid": {
+              "$ref": "#/$defs/GridSpec"
+            },
+            "seed": {
+              "default": 42,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "structure": {
+              "$ref": "#/$defs/StructureParameters"
+            }
+          },
+          "title": "GenerateFieldRequest",
+          "type": "object"
+        },
+        "GridSpec": {
+          "additionalProperties": false,
+          "description": "A regular two-dimensional finite-element grid.",
+          "properties": {
+            "crs": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Crs"
+            },
+            "length_unit": {
+              "const": "m",
+              "default": "m",
+              "title": "Length Unit",
+              "type": "string"
+            },
+            "length_x": {
+              "description": "Domain length in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Length X",
+              "type": "number"
+            },
+            "length_y": {
+              "description": "Domain length in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Length Y",
+              "type": "number"
+            },
+            "nx": {
+              "description": "Number of elements in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Nx",
+              "type": "integer"
+            },
+            "ny": {
+              "description": "Number of elements in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Ny",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "nx",
+            "ny",
+            "length_x",
+            "length_y"
+          ],
+          "title": "GridSpec",
+          "type": "object"
+        },
+        "StructureParameters": {
+          "additionalProperties": false,
+          "properties": {
+            "correlation_length_x": {
+              "default": 48,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length X",
+              "type": "number"
+            },
+            "correlation_length_y": {
+              "default": 64,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length Y",
+              "type": "number"
+            },
+            "covariance_type": {
+              "default": "gaussian",
+              "enum": [
+                "gaussian",
+                "exponential",
+                "matern"
+              ],
+              "title": "Covariance Type",
+              "type": "string"
+            },
+            "log_variance": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Log Variance",
+              "type": "number"
+            },
+            "matern_nu": {
+              "default": 0.5,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Matern Nu",
+              "type": "number"
+            },
+            "mean_log_conductivity": {
+              "default": -9.210340371976184,
+              "maximum": 10,
+              "minimum": -30,
+              "title": "Mean Log Conductivity",
+              "type": "number"
+            }
+          },
+          "title": "StructureParameters",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "conductivity": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Conductivity",
+          "type": "array"
+        },
+        "field_id": {
+          "minLength": 1,
+          "title": "Field Id",
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/$defs/GenerateFieldRequest"
+        },
+        "solver_version": {
+          "title": "Solver Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field_id",
+        "request",
+        "conductivity",
+        "solver_version"
+      ],
+      "title": "GeneratedField",
+      "type": "object"
+    },
+    "InverseRequest": {
+      "$defs": {
+        "GridSpec": {
+          "additionalProperties": false,
+          "description": "A regular two-dimensional finite-element grid.",
+          "properties": {
+            "crs": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Crs"
+            },
+            "length_unit": {
+              "const": "m",
+              "default": "m",
+              "title": "Length Unit",
+              "type": "string"
+            },
+            "length_x": {
+              "description": "Domain length in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Length X",
+              "type": "number"
+            },
+            "length_y": {
+              "description": "Domain length in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Length Y",
+              "type": "number"
+            },
+            "nx": {
+              "description": "Number of elements in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Nx",
+              "type": "integer"
+            },
+            "ny": {
+              "description": "Number of elements in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Ny",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "nx",
+            "ny",
+            "length_x",
+            "length_y"
+          ],
+          "title": "GridSpec",
+          "type": "object"
+        },
+        "InverseSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "components": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Components",
+              "type": "integer"
+            },
+            "ensemble_size": {
+              "default": 200,
+              "maximum": 400,
+              "minimum": 2,
+              "title": "Ensemble Size",
+              "type": "integer"
+            },
+            "initial_damping": {
+              "default": 0.001,
+              "exclusiveMinimum": 0,
+              "title": "Initial Damping",
+              "type": "number"
+            },
+            "max_iterations": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Max Iterations",
+              "type": "integer"
+            },
+            "regularization": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "title": "Regularization",
+              "type": "number"
+            },
+            "seed": {
+              "default": 43,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "tolerance": {
+              "default": 1e-05,
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "title": "Tolerance",
+              "type": "number"
+            }
+          },
+          "title": "InverseSettings",
+          "type": "object"
+        },
+        "InverseTest": {
+          "additionalProperties": false,
+          "properties": {
+            "observations": {
+              "items": {
+                "$ref": "#/$defs/ObservedHead"
+              },
+              "maxItems": 24,
+              "minItems": 1,
+              "title": "Observations",
+              "type": "array"
+            },
+            "pump_node": {
+              "minimum": 0,
+              "title": "Pump Node",
+              "type": "integer"
+            },
+            "pumping_rate": {
+              "title": "Pumping Rate",
+              "type": "number"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "test_id",
+            "pump_node",
+            "pumping_rate",
+            "observations"
+          ],
+          "title": "InverseTest",
+          "type": "object"
+        },
+        "ObservedHead": {
+          "additionalProperties": false,
+          "properties": {
+            "head": {
+              "title": "Head",
+              "type": "number"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            },
+            "standard_deviation": {
+              "minimum": 0,
+              "title": "Standard Deviation",
+              "type": "number"
+            },
+            "well_id": {
+              "title": "Well Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "well_id",
+            "node",
+            "head",
+            "standard_deviation"
+          ],
+          "title": "ObservedHead",
+          "type": "object"
+        },
+        "StructureParameters": {
+          "additionalProperties": false,
+          "properties": {
+            "correlation_length_x": {
+              "default": 48,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length X",
+              "type": "number"
+            },
+            "correlation_length_y": {
+              "default": 64,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length Y",
+              "type": "number"
+            },
+            "covariance_type": {
+              "default": "gaussian",
+              "enum": [
+                "gaussian",
+                "exponential",
+                "matern"
+              ],
+              "title": "Covariance Type",
+              "type": "string"
+            },
+            "log_variance": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Log Variance",
+              "type": "number"
+            },
+            "matern_nu": {
+              "default": 0.5,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Matern Nu",
+              "type": "number"
+            },
+            "mean_log_conductivity": {
+              "default": -9.210340371976184,
+              "maximum": 10,
+              "minimum": -30,
+              "title": "Mean Log Conductivity",
+              "type": "number"
+            }
+          },
+          "title": "StructureParameters",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "grid": {
+          "$ref": "#/$defs/GridSpec"
+        },
+        "prior": {
+          "$ref": "#/$defs/StructureParameters"
+        },
+        "settings": {
+          "$ref": "#/$defs/InverseSettings"
+        },
+        "tests": {
+          "items": {
+            "$ref": "#/$defs/InverseTest"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Tests",
+          "type": "array"
+        }
+      },
+      "required": [
+        "grid",
+        "tests"
+      ],
+      "title": "InverseRequest",
+      "type": "object"
+    },
+    "InverseResult": {
+      "$defs": {
+        "GridSpec": {
+          "additionalProperties": false,
+          "description": "A regular two-dimensional finite-element grid.",
+          "properties": {
+            "crs": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Crs"
+            },
+            "length_unit": {
+              "const": "m",
+              "default": "m",
+              "title": "Length Unit",
+              "type": "string"
+            },
+            "length_x": {
+              "description": "Domain length in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Length X",
+              "type": "number"
+            },
+            "length_y": {
+              "description": "Domain length in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Length Y",
+              "type": "number"
+            },
+            "nx": {
+              "description": "Number of elements in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Nx",
+              "type": "integer"
+            },
+            "ny": {
+              "description": "Number of elements in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Ny",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "nx",
+            "ny",
+            "length_x",
+            "length_y"
+          ],
+          "title": "GridSpec",
+          "type": "object"
+        },
+        "InverseIteration": {
+          "additionalProperties": false,
+          "properties": {
+            "accepted": {
+              "title": "Accepted",
+              "type": "boolean"
+            },
+            "damping": {
+              "title": "Damping",
+              "type": "number"
+            },
+            "data_misfit": {
+              "title": "Data Misfit",
+              "type": "number"
+            },
+            "iteration": {
+              "title": "Iteration",
+              "type": "integer"
+            },
+            "objective": {
+              "title": "Objective",
+              "type": "number"
+            },
+            "prior_penalty": {
+              "title": "Prior Penalty",
+              "type": "number"
+            },
+            "step_norm": {
+              "title": "Step Norm",
+              "type": "number"
+            }
+          },
+          "required": [
+            "iteration",
+            "objective",
+            "data_misfit",
+            "prior_penalty",
+            "step_norm",
+            "damping",
+            "accepted"
+          ],
+          "title": "InverseIteration",
+          "type": "object"
+        },
+        "InverseRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "grid": {
+              "$ref": "#/$defs/GridSpec"
+            },
+            "prior": {
+              "$ref": "#/$defs/StructureParameters"
+            },
+            "settings": {
+              "$ref": "#/$defs/InverseSettings"
+            },
+            "tests": {
+              "items": {
+                "$ref": "#/$defs/InverseTest"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "title": "Tests",
+              "type": "array"
+            }
+          },
+          "required": [
+            "grid",
+            "tests"
+          ],
+          "title": "InverseRequest",
+          "type": "object"
+        },
+        "InverseSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "components": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Components",
+              "type": "integer"
+            },
+            "ensemble_size": {
+              "default": 200,
+              "maximum": 400,
+              "minimum": 2,
+              "title": "Ensemble Size",
+              "type": "integer"
+            },
+            "initial_damping": {
+              "default": 0.001,
+              "exclusiveMinimum": 0,
+              "title": "Initial Damping",
+              "type": "number"
+            },
+            "max_iterations": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Max Iterations",
+              "type": "integer"
+            },
+            "regularization": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "title": "Regularization",
+              "type": "number"
+            },
+            "seed": {
+              "default": 43,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "tolerance": {
+              "default": 1e-05,
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "title": "Tolerance",
+              "type": "number"
+            }
+          },
+          "title": "InverseSettings",
+          "type": "object"
+        },
+        "InverseTest": {
+          "additionalProperties": false,
+          "properties": {
+            "observations": {
+              "items": {
+                "$ref": "#/$defs/ObservedHead"
+              },
+              "maxItems": 24,
+              "minItems": 1,
+              "title": "Observations",
+              "type": "array"
+            },
+            "pump_node": {
+              "minimum": 0,
+              "title": "Pump Node",
+              "type": "integer"
+            },
+            "pumping_rate": {
+              "title": "Pumping Rate",
+              "type": "number"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "test_id",
+            "pump_node",
+            "pumping_rate",
+            "observations"
+          ],
+          "title": "InverseTest",
+          "type": "object"
+        },
+        "ObservedHead": {
+          "additionalProperties": false,
+          "properties": {
+            "head": {
+              "title": "Head",
+              "type": "number"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            },
+            "standard_deviation": {
+              "minimum": 0,
+              "title": "Standard Deviation",
+              "type": "number"
+            },
+            "well_id": {
+              "title": "Well Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "well_id",
+            "node",
+            "head",
+            "standard_deviation"
+          ],
+          "title": "ObservedHead",
+          "type": "object"
+        },
+        "PredictedMeasurement": {
+          "additionalProperties": false,
+          "properties": {
+            "observed_head": {
+              "title": "Observed Head",
+              "type": "number"
+            },
+            "predicted_head": {
+              "title": "Predicted Head",
+              "type": "number"
+            },
+            "residual": {
+              "title": "Residual",
+              "type": "number"
+            },
+            "standard_deviation": {
+              "title": "Standard Deviation",
+              "type": "number"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            },
+            "well_id": {
+              "title": "Well Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "test_id",
+            "well_id",
+            "observed_head",
+            "predicted_head",
+            "standard_deviation",
+            "residual"
+          ],
+          "title": "PredictedMeasurement",
+          "type": "object"
+        },
+        "StructureParameters": {
+          "additionalProperties": false,
+          "properties": {
+            "correlation_length_x": {
+              "default": 48,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length X",
+              "type": "number"
+            },
+            "correlation_length_y": {
+              "default": 64,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length Y",
+              "type": "number"
+            },
+            "covariance_type": {
+              "default": "gaussian",
+              "enum": [
+                "gaussian",
+                "exponential",
+                "matern"
+              ],
+              "title": "Covariance Type",
+              "type": "string"
+            },
+            "log_variance": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Log Variance",
+              "type": "number"
+            },
+            "matern_nu": {
+              "default": 0.5,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Matern Nu",
+              "type": "number"
+            },
+            "mean_log_conductivity": {
+              "default": -9.210340371976184,
+              "maximum": 10,
+              "minimum": -30,
+              "title": "Mean Log Conductivity",
+              "type": "number"
+            }
+          },
+          "title": "StructureParameters",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "coefficients": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Coefficients",
+          "type": "array"
+        },
+        "converged": {
+          "title": "Converged",
+          "type": "boolean"
+        },
+        "estimated_conductivity": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Estimated Conductivity",
+          "type": "array"
+        },
+        "final_objective": {
+          "title": "Final Objective",
+          "type": "number"
+        },
+        "initial_objective": {
+          "title": "Initial Objective",
+          "type": "number"
+        },
+        "iterations": {
+          "items": {
+            "$ref": "#/$defs/InverseIteration"
+          },
+          "title": "Iterations",
+          "type": "array"
+        },
+        "mean_log_conductivity": {
+          "title": "Mean Log Conductivity",
+          "type": "number"
+        },
+        "predictions": {
+          "items": {
+            "$ref": "#/$defs/PredictedMeasurement"
+          },
+          "title": "Predictions",
+          "type": "array"
+        },
+        "request": {
+          "$ref": "#/$defs/InverseRequest"
+        },
+        "solver_version": {
+          "title": "Solver Version",
+          "type": "string"
+        },
+        "termination_reason": {
+          "title": "Termination Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request",
+        "estimated_conductivity",
+        "coefficients",
+        "mean_log_conductivity",
+        "initial_objective",
+        "final_objective",
+        "converged",
+        "termination_reason",
+        "iterations",
+        "predictions",
+        "solver_version"
+      ],
+      "title": "InverseResult",
+      "type": "object"
+    },
+    "JobStatus": {
+      "$defs": {
+        "JobError": {
+          "properties": {
+            "code": {
+              "title": "Code",
+              "type": "string"
+            },
+            "message": {
+              "title": "Message",
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "JobError",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "detail": {
+          "additionalProperties": true,
+          "title": "Detail",
+          "type": "object"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JobError"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "generate_field",
+            "run_pumping_test",
+            "run_inverse_model"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "message": {
+          "default": "Waiting for the compute worker",
+          "title": "Message",
+          "type": "string"
+        },
+        "progress": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Progress",
+          "type": "number"
+        },
+        "stage": {
+          "default": "queued",
+          "title": "Stage",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "status": {
+          "default": "queued",
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "kind",
+        "created_at"
+      ],
+      "title": "JobStatus",
+      "type": "object"
+    },
+    "PumpingTestRequest": {
+      "$defs": {
+        "GenerateFieldRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "grid": {
+              "$ref": "#/$defs/GridSpec"
+            },
+            "seed": {
+              "default": 42,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "structure": {
+              "$ref": "#/$defs/StructureParameters"
+            }
+          },
+          "title": "GenerateFieldRequest",
+          "type": "object"
+        },
+        "GeneratedField": {
+          "additionalProperties": false,
+          "properties": {
+            "conductivity": {
+              "items": {
+                "type": "number"
+              },
+              "title": "Conductivity",
+              "type": "array"
+            },
+            "field_id": {
+              "minLength": 1,
+              "title": "Field Id",
+              "type": "string"
+            },
+            "request": {
+              "$ref": "#/$defs/GenerateFieldRequest"
+            },
+            "solver_version": {
+              "title": "Solver Version",
+              "type": "string"
+            }
+          },
+          "required": [
+            "field_id",
+            "request",
+            "conductivity",
+            "solver_version"
+          ],
+          "title": "GeneratedField",
+          "type": "object"
+        },
+        "GridSpec": {
+          "additionalProperties": false,
+          "description": "A regular two-dimensional finite-element grid.",
+          "properties": {
+            "crs": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Crs"
+            },
+            "length_unit": {
+              "const": "m",
+              "default": "m",
+              "title": "Length Unit",
+              "type": "string"
+            },
+            "length_x": {
+              "description": "Domain length in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Length X",
+              "type": "number"
+            },
+            "length_y": {
+              "description": "Domain length in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Length Y",
+              "type": "number"
+            },
+            "nx": {
+              "description": "Number of elements in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Nx",
+              "type": "integer"
+            },
+            "ny": {
+              "description": "Number of elements in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Ny",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "nx",
+            "ny",
+            "length_x",
+            "length_y"
+          ],
+          "title": "GridSpec",
+          "type": "object"
+        },
+        "InstalledWell": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Id",
+              "type": "string"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "node"
+          ],
+          "title": "InstalledWell",
+          "type": "object"
+        },
+        "NoiseSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "absolute_floor": {
+              "default": 0.001,
+              "minimum": 0,
+              "title": "Absolute Floor",
+              "type": "number"
+            },
+            "relative": {
+              "default": 0.05,
+              "maximum": 1,
+              "minimum": 0,
+              "title": "Relative",
+              "type": "number"
+            },
+            "seed": {
+              "default": 44,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            }
+          },
+          "title": "NoiseSettings",
+          "type": "object"
+        },
+        "StructureParameters": {
+          "additionalProperties": false,
+          "properties": {
+            "correlation_length_x": {
+              "default": 48,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length X",
+              "type": "number"
+            },
+            "correlation_length_y": {
+              "default": 64,
+              "exclusiveMinimum": 0,
+              "title": "Correlation Length Y",
+              "type": "number"
+            },
+            "covariance_type": {
+              "default": "gaussian",
+              "enum": [
+                "gaussian",
+                "exponential",
+                "matern"
+              ],
+              "title": "Covariance Type",
+              "type": "string"
+            },
+            "log_variance": {
+              "default": 1,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Log Variance",
+              "type": "number"
+            },
+            "matern_nu": {
+              "default": 0.5,
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "title": "Matern Nu",
+              "type": "number"
+            },
+            "mean_log_conductivity": {
+              "default": -9.210340371976184,
+              "maximum": 10,
+              "minimum": -30,
+              "title": "Mean Log Conductivity",
+              "type": "number"
+            }
+          },
+          "title": "StructureParameters",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/GeneratedField"
+        },
+        "monitor_well_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Monitor Well Ids"
+        },
+        "noise": {
+          "$ref": "#/$defs/NoiseSettings"
+        },
+        "pump_well_id": {
+          "title": "Pump Well Id",
+          "type": "string"
+        },
+        "pumping_rate": {
+          "default": -0.001,
+          "title": "Pumping Rate",
+          "type": "number"
+        },
+        "test_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Test Id",
+          "type": "string"
+        },
+        "wells": {
+          "items": {
+            "$ref": "#/$defs/InstalledWell"
+          },
+          "maxItems": 25,
+          "minItems": 2,
+          "title": "Wells",
+          "type": "array"
+        }
+      },
+      "required": [
+        "field",
+        "wells",
+        "pump_well_id"
+      ],
+      "title": "PumpingTestRequest",
+      "type": "object"
+    },
+    "PumpingTestResult": {
+      "$defs": {
+        "GridSpec": {
+          "additionalProperties": false,
+          "description": "A regular two-dimensional finite-element grid.",
+          "properties": {
+            "crs": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Crs"
+            },
+            "length_unit": {
+              "const": "m",
+              "default": "m",
+              "title": "Length Unit",
+              "type": "string"
+            },
+            "length_x": {
+              "description": "Domain length in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Length X",
+              "type": "number"
+            },
+            "length_y": {
+              "description": "Domain length in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Length Y",
+              "type": "number"
+            },
+            "nx": {
+              "description": "Number of elements in the x direction",
+              "exclusiveMinimum": 0,
+              "title": "Nx",
+              "type": "integer"
+            },
+            "ny": {
+              "description": "Number of elements in the y direction",
+              "exclusiveMinimum": 0,
+              "title": "Ny",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "nx",
+            "ny",
+            "length_x",
+            "length_y"
+          ],
+          "title": "GridSpec",
+          "type": "object"
+        },
+        "InstalledWell": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Id",
+              "type": "string"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "node"
+          ],
+          "title": "InstalledWell",
+          "type": "object"
+        },
+        "Measurement": {
+          "additionalProperties": false,
+          "properties": {
+            "clean_head": {
+              "title": "Clean Head",
+              "type": "number"
+            },
+            "head": {
+              "title": "Head",
+              "type": "number"
+            },
+            "node": {
+              "minimum": 0,
+              "title": "Node",
+              "type": "integer"
+            },
+            "standard_deviation": {
+              "minimum": 0,
+              "title": "Standard Deviation",
+              "type": "number"
+            },
+            "test_id": {
+              "title": "Test Id",
+              "type": "string"
+            },
+            "well_id": {
+              "title": "Well Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "test_id",
+            "well_id",
+            "node",
+            "clean_head",
+            "head",
+            "standard_deviation"
+          ],
+          "title": "Measurement",
+          "type": "object"
+        },
+        "NoiseSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "absolute_floor": {
+              "default": 0.001,
+              "minimum": 0,
+              "title": "Absolute Floor",
+              "type": "number"
+            },
+            "relative": {
+              "default": 0.05,
+              "maximum": 1,
+              "minimum": 0,
+              "title": "Relative",
+              "type": "number"
+            },
+            "seed": {
+              "default": 44,
+              "maximum": 4294967295,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            }
+          },
+          "title": "NoiseSettings",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "field_id": {
+          "title": "Field Id",
+          "type": "string"
+        },
+        "grid": {
+          "$ref": "#/$defs/GridSpec"
+        },
+        "heads": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Heads",
+          "type": "array"
+        },
+        "measurements": {
+          "items": {
+            "$ref": "#/$defs/Measurement"
+          },
+          "minItems": 1,
+          "title": "Measurements",
+          "type": "array"
+        },
+        "noise": {
+          "$ref": "#/$defs/NoiseSettings"
+        },
+        "pump_well_id": {
+          "title": "Pump Well Id",
+          "type": "string"
+        },
+        "pumping_rate": {
+          "title": "Pumping Rate",
+          "type": "number"
+        },
+        "solver_version": {
+          "title": "Solver Version",
+          "type": "string"
+        },
+        "test_id": {
+          "title": "Test Id",
+          "type": "string"
+        },
+        "wells": {
+          "items": {
+            "$ref": "#/$defs/InstalledWell"
+          },
+          "title": "Wells",
+          "type": "array"
+        }
+      },
+      "required": [
+        "test_id",
+        "field_id",
+        "grid",
+        "wells",
+        "pump_well_id",
+        "pumping_rate",
+        "noise",
+        "heads",
+        "measurements",
+        "solver_version"
+      ],
+      "title": "PumpingTestResult",
+      "type": "object"
+    }
+  }
+}

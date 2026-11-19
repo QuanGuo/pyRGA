@@ -21,6 +21,7 @@ __pycache__/
 *.tiff
 *.ico
 *.json
+!docs/experiment-api.schema.json
 *Recovery-Codes*
 PyPI-Recovery-Codes-*
 Untitled-*
